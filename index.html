@@ -6,7 +6,7 @@
 <title>Monitor de Energía Argentina</title>
 <meta name="description" content="Mapa indicativo de dónde se genera la electricidad en Argentina, dónde se consume y cómo fluye entre regiones, con datos abiertos de CAMMESA.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2374acdf'/%3E%3Cpath d='M35 8 L18 36 H30 L27 56 L46 27 H34 Z' fill='%23ffffff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="estilos.css?v=2026112403">
+<link rel="stylesheet" href="estilos.css?v=2026112404">
 </head>
 <body>
 <header class="barra">
@@ -80,7 +80,7 @@
         <li><strong>Generación y demanda por región</strong> vienen directo de la API abierta de CAMMESA (<code>api.cammesa.com/demanda-svc</code>). Se usa la última hora en la que ya llegaron datos de todas las regiones, porque el último intervalo suele llegar incompleto.</li>
         <li><strong>Los flujos entre regiones son un modelo indicativo, no mediciones de líneas.</strong> Se estiman con una aproximación lineal de flujo de potencia sobre una red reducida de 12 corredores entre regiones vecinas, con impedancias aproximadas.</li>
         <li><strong>"De dónde viene"</strong> reparte la energía que recibe una región entre las regiones que la generan, siguiendo los flujos estimados en proporción.</li>
-        <li><strong>Importación y no asignado:</strong> CAMMESA da la importación como un solo número, sin país ni punto de entrada. Además, unos 700 a 800 MW de la generación nacional no aparecen en ninguna región. Esa energía, junto con la importación, se muestra como "sin ubicar" y se reparte entre las regiones en proporción a su demanda.</li>
+        <li><strong>Importación y no asignado:</strong> CAMMESA da la importación como un solo número, sin país ni punto de entrada. La hidráulica de Yacyretá no figura en ninguna región de CAMMESA: se asigna al NEA. Si queda generación sin región, se muestra junto con la importación como "sin ubicar" y se reparte entre las regiones en proporción a su demanda.</li>
         <li><strong>Carbono:</strong> CAMMESA agrupa la generación en hidráulica, térmica, nuclear y renovable. Se estima 450 gCO₂/kWh para la térmica y 0 para el resto, así que es una aproximación.</li>
         <li>Los valores negativos pequeños de la API (por ejemplo, consumo propio de centrales) se llevan a 0. Tierra del Fuego no está conectada al sistema nacional y no tiene datos.</li>
         <li>No incluye precios ni centrales en tiempo real: la API abierta no los publica.</li>
@@ -90,6 +90,6 @@
   </aside>
 </main>
 
-<script src="app.js?v=2026112403"></script>
+<script src="app.js?v=2026112404"></script>
 </body>
 </html>

@@ -158,6 +158,17 @@ function calcular(k) {
   nac.importacion = limpio(gn.importacion);
   nac.total = TIPOS.reduce((s, t) => s + nac[t.k], 0) + nac.importacion;
   nac.dem = dn ? limpio(dn.dem) : null;
+  // Yacyretá (Corrientes, NEA) no figura en la generación regional de CAMMESA, pero sí en el total
+  // nacional. La hidráulica nacional que ninguna región tiene se asigna al NEA como Yacyretá.
+  const nea = R.find((r) => r.codigo === "NEA");
+  const hidFaltante = Math.max(nac.hidraulico - R.reduce((s, r) => s + r.hidraulico, 0), 0);
+  if (nea && hidFaltante > 0) {
+    nea.yacyreta = hidFaltante;
+    nea.hidraulico += hidFaltante;
+    nea.gen += hidFaltante;
+    nea.neto = nea.gen - nea.dem;
+    nea.co2 = (G_CO2_TERMICO * nea.termico) / nea.gen;
+  }
   const sumGen = R.reduce((s, r) => s + r.gen, 0), sumDem = R.reduce((s, r) => s + r.dem, 0);
   nac.noAsignado = Math.max(nac.total - nac.importacion - sumGen, 0);
   nac.co2 = nac.total > 0 ? (G_CO2_TERMICO * nac.termico) / nac.total : null;
@@ -460,6 +471,7 @@ function dibujarRegion() {
     <div class="barra-apilada">${consumo.filter((p) => p.v > 0).map((p) => `<i style="width:${100 * p.v}%;background:var(${p.c})" title="${p.n} ${pct(p.v)}"></i>`).join("")}</div>
     <div class="ley-tipos">${consumo.map((p) => `<span style="--c:var(${p.c})">${p.n} ${pct(p.v)}</span>`).join("")}</div>
     <h3>Lo que genera la región</h3>
+    ${r.yacyreta ? `<p class="pista">Incluye ${fmt(r.yacyreta)} MW de Yacyretá, que CAMMESA no asigna a ninguna región.</p>` : ""}
     ${filasMix(TIPOS.map((t) => ({ n: t.n, c: t.c, v: r[t.k] })), r.gen)}`;
 }
 
@@ -569,7 +581,7 @@ async function cargar() {
 }
 
 async function iniciar() {
-  estado.geo = await (await fetch("datos/regiones.json?v=2026112403")).json();
+  estado.geo = await (await fetch("datos/regiones.json?v=2026112404")).json();
   armarMapa();
   activarArrastre();
   document.querySelectorAll('input[name="modo"]').forEach((b) => b.addEventListener("change", () => { estado.modo = b.value; dibujar(); }));
