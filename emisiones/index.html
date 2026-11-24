@@ -6,8 +6,8 @@
 <title>Emisores de CO₂ en Argentina</title>
 <meta name="description" content="Mapa de las instalaciones que más gases de efecto invernadero emiten en Argentina, por provincia y por sector, con datos abiertos de Climate TRACE.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%235b3b24'/%3E%3Ctext x='32' y='41' font-size='22' font-family='Arial' font-weight='700' text-anchor='middle' fill='%23ffffff'%3ECO2%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="../estilos.css?v=2026112410">
-<link rel="stylesheet" href="emisiones.css?v=2026112410">
+<link rel="stylesheet" href="../estilos.css?v=2026112411">
+<link rel="stylesheet" href="emisiones.css?v=2026112411">
 </head>
 <body>
 <header class="barra">
@@ -35,13 +35,15 @@
 
   <aside class="lateral">
     <section>
+      <label class="buscar"><input type="search" id="fBuscar" placeholder="Buscar empresa o planta (por ejemplo, Scania)" aria-label="Buscar empresa o planta"></label>
       <div class="filtros">
         <label>Provincia <select id="fProv"><option value="">Todo el país</option></select></label>
         <label>Sector <select id="fSector"><option value="">Todos</option></select></label>
       </div>
-      <div class="kpis kpis3">
+      <div class="kpis kpis4">
         <div><span class="kpi-v" id="kTot">–</span><span class="kpi-l" id="kTotL">Mt CO₂e por año</span></div>
-        <div><span class="kpi-v" id="kN">–</span><span class="kpi-l">instalaciones en el mapa</span></div>
+        <div><span class="kpi-v" id="kN">–</span><span class="kpi-l">con emisiones estimadas</span></div>
+        <div><span class="kpi-v" id="kNo">–</span><span class="kpi-l">fábricas sin dato de emisiones</span></div>
         <div><span class="kpi-v" id="kTop">–</span><span class="kpi-l" id="kTopL">del total, las 10 mayores</span></div>
       </div>
     </section>
@@ -53,6 +55,13 @@
       <ol id="ranking" class="ranking"></ol>
       <button id="verMas" class="btn ver-mas" hidden>Ver más</button>
       <p class="pista"><a id="csv" href="#" download="emisores-co2-argentina.csv">Descargar la lista en CSV</a></p>
+    </section>
+
+    <section id="bloqueOsm">
+      <h2>Otras fábricas <small id="osmSub"></small></h2>
+      <p class="pista" style="margin:0 0 8px">Sin dato de emisiones: figuran en OpenStreetMap pero no en Climate TRACE.</p>
+      <ul id="listaOsm" class="ranking sin-num"></ul>
+      <button id="verMasO" class="btn ver-mas" hidden>Ver más</button>
     </section>
 
     <section>
@@ -75,13 +84,14 @@
         <li><strong>Feedlots:</strong> Climate TRACE los estima en una grilla, no por establecimiento. Se suman en los totales por provincia y sector, pero no se dibujan.</li>
         <li>No incluye transporte, edificios ni uso del suelo, que Climate TRACE estima por área y no por instalación.</li>
         <li>Propietarios: cuando Climate TRACE los informa. Muchas instalaciones no tienen.</li>
+        <li><strong>Otras fábricas (sin dato de emisiones):</strong> plantas industriales con nombre cargadas en <a href="https://www.openstreetmap.org" rel="noopener">OpenStreetMap</a>, el mapa colaborativo. No traen emisiones. Pueden faltar fábricas o haber algunas cerradas; el rubro se deduce del nombre y puede fallar. Se omiten parques industriales, depósitos y las que ya figuran en Climate TRACE. <span id="osmMeta"></span></li>
         <li>La provincia se asigna por la ubicación del punto.</li>
       </ul>
-      <p class="pista">Contornos de provincias: Natural Earth (dominio público).</p>
+      <p class="pista">Contornos de provincias: Natural Earth (dominio público). Fábricas: © colaboradores de <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a>, licencia ODbL.</p>
     </details>
   </aside>
 </main>
 
-<script src="emisiones.js?v=2026112410"></script>
+<script src="emisiones.js?v=2026112411"></script>
 </body>
 </html>

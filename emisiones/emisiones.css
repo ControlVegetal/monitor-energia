@@ -50,3 +50,14 @@
 .mixfilas .mf { cursor: pointer; border-radius: 4px; }
 .mixfilas .mf:hover, .mixfilas .mf.sel { background: var(--neutro); }
 .mixfilas .mf { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; }
+.punto.osm { fill: var(--fondo); fill-opacity: .9; stroke: var(--suave); stroke-width: 1; }
+.punto.osm:hover, .punto.osm.sel { stroke: var(--texto); stroke-width: 2; }
+i.hueco { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--suave); background: var(--fondo); flex: none; display: inline-block; box-sizing: border-box; }
+.sd { color: var(--suave); font-weight: 600; }
+.rk-v.sd { font-size: .76rem; font-weight: 400; }
+.ranking.sin-num li { grid-template-columns: 0 minmax(0, 1fr) auto; gap: 0 8px; }
+.ranking.sin-num li::before { content: ""; }
+.buscar { display: block; margin-bottom: 10px; }
+.buscar input { width: 100%; font: inherit; font-size: .9rem; color: var(--texto); background: var(--fondo); border: 1px solid var(--borde); border-radius: 6px; padding: 7px 10px; }
+.kpis4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpis4 .kpi-v { font-size: 1.15rem; }

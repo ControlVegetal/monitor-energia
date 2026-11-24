@@ -33,16 +33,17 @@ print("elementos:", len(datos["elements"]), "osm_base:", datos.get("osm3s", {}).
 def plano(s): return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
 # (clave, regex sobre nombre+etiquetas en minúsculas sin acentos). El orden importa: gana la primera.
 REGLAS = [
-    ("azucar", r"\bingenio\b|azucar|\bsugar\b"),
+    ("azucar", r"\bingenio\b|azucar|\bsugar\b|trapiche|ledesma"),
     ("automotriz", r"\bscania\b|toyota|\bford\b|volkswagen|\bfiat\b|stellantis|peugeot|citroen|renault|mercedes.?benz|\biveco\b|general motors|nissan|\bhonda\b|\bdeutz\b|john deere|\bagco\b|\bcnh\b|new holland|case ih|pauny|agrale|zanello|tractor|automotri|autopart|car_manufactur|\bvehicle|cosechadora|sembradora|maquinaria agricola|metalfor|\bakron\b|\bpla\b|\bapache\b|crucianelli|agrometal|gherardi|giorgi|\bombu\b"),
-    ("metal", r"metal|siderur|acer[ai]|\bsteel\b|fundicion|foundry|forja|herramient|machinery|maquinaria|mecanica|tornería|torneria|matricer|caldereria|galvaniz|alumini|\bweld|soldad|trefil|electromecan"),
-    ("alimentos", r"frigorifico|slaughter|matadero|aceitera|\boil mill|molino|harinera|\bflour|lactea|lacteos|\bdairy|usina lactea|queser|cervec|brewery|bodega|winery|alimento|\bfood|\bbakery|panific|galletit|golosina|chocolat|yerba|\bte\b|arrocer|citric|jugos|conserv|vitivin|avicola|faena|pesquer|fish|bebida|beverage|gaseosa|embotell|malter|olivic|\bfeed\b|balanceado"),
+    ("metal", r"acindar|aceros|zapla|tenaris|siderca|metal|siderur|acer[ai]|\bsteel\b|fundicion|foundry|forja|herramient|machinery|maquinaria|mecanica|tornería|torneria|matricer|caldereria|galvaniz|alumini|\bweld|soldad|trefil|electromecan"),
+    ("alimentos", r"nestle|quilmes|vicentin|\bmani\b|arcor|bagley|danone|mastellone|serenisima|sancor|cargill|bunge|dreyfus|deheza|\bagd\b|swift|mondelez|pepsico|coca.?cola|semilla|frigorifico|slaughter|matadero|aceitera|\boil mill|molino|harinera|\bflour|lactea|lacteos|\bdairy|usina lactea|queser|cervec|brewery|bodega|winery|alimento|\bfood|\bbakery|panific|galletit|golosina|chocolat|yerba|\bte\b|arrocer|citric|jugos|conserv|vitivin|avicola|faena|pesquer|fish|bebida|beverage|gaseosa|embotell|malter|olivic|\bfeed\b|balanceado"),
     ("textil", r"textil|alpargatas|hilander|hilado|tejedur|curtiembre|tannery|calzado|\bshoe|indumentaria|clothing|algodon|desmotadora|lana\b|lavadero de lana"),
     ("quimica", r"quimic|chemical|plastic|petroquim|fertiliz|pintur|\bpaint|farmac|pharma|laborator|caucho|rubber|neumatic|\btire|\btyre|deterg|cosmet|gases industriales|oxigeno|refiner|biodiesel|bioetanol|etanol|destiler"),
     ("papel", r"papel|paper|celulosa|\bpulp|carton|aserradero|sawmill|madera|wood|mueble|furniture|laminad|imprent|printing|grafica"),
     ("minerales", r"ceramic|vidrio|\bglass|ladrill|\bbrick|cement|hormigon|concrete|\bcal\b|calera|\blime\b|yeso|marmol|granit|cantera|quarry|arido|asfalt|asphalt"),
 ]
 COMP = [(k, re.compile(rx)) for k, rx in REGLAS]
+EXCL = re.compile(r"^ex[ -]|transformadora|subestacion|central telefonica|aduana|deposito|centro de distribucion|concesionari|potabilizadora|cooperativa de electricidad|planta generadora|central (termica|electrica|hidro)|depuradora|cloaca|efluentes cloacales|planta de agua|city gate|planta de gas|reguladora|estacion de servicio|\bypf\b$|antena|repetidora|cementerio|escuela|comisaria|corralon|ferreteria|taller mecanico|gomeria|lavadero de autos")
 PARQUE = re.compile(r"^(parque|area|zona|sector|polo|distrito|predio|complejo|barrio|lote|loteo|ciudad)\b.*\b(industrial|industria|logistic|empresari|tecnologic|productiv)", re.I)
 EXCL_IND = {"warehouse", "depot", "logistics", "storage", "port", "yes", "scrap_yard", "oil", "gas", "mine", "distributor", "fuel"}
 
@@ -75,7 +76,8 @@ for e in datos["elements"]:
     nombre = (t.get("name") or "").strip()
     c = e.get("center") or ({"lat": e.get("lat"), "lon": e.get("lon")} if "lat" in e else None)
     if not nombre or not c: continue
-    if t.get("landuse") == "industrial" and not t.get("man_made") and not t.get("industrial") and PARQUE.search(plano(nombre)): omit["parque"] += 1; continue
+    if PARQUE.search(plano(nombre)): omit["parque"] += 1; continue
+    if EXCL.search(plano(nombre)): omit["no_es_fabrica"] += 1; continue
     if t.get("industrial") in EXCL_IND and not t.get("man_made"): omit["deposito"] += 1; continue
     if t.get("disused") or t.get("abandoned") or "disused:man_made" in t: omit["abandonada"] += 1; continue
     lat, lon = round(c["lat"], 5), round(c["lon"], 5)
