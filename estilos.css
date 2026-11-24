@@ -156,3 +156,9 @@ body.sin-datos .app { display: none; }
 .dia-barra.actual { stroke: var(--texto); stroke-width: 2; }
 .dia-barra.sin-mapa { cursor: default; opacity: .75; }
 .dia-datos small { font-size: .7rem; font-weight: 400; color: var(--suave); }
+
+/* Selector de país */
+.paises { display: inline-flex; border: 1px solid var(--borde); border-radius: 6px; overflow: hidden; font-size: .85rem; }
+.paises a { padding: 4px 10px; color: var(--texto); text-decoration: none; }
+.paises a + a { border-left: 1px solid var(--borde); }
+.paises a[aria-current] { background: var(--texto); color: var(--fondo); }

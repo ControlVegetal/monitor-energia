@@ -53,7 +53,8 @@ def smard():
     if not tiempos: raise RuntimeError("SMARD: keine vollständigen Zeitpunkte")
     out = {"zeiten": tiempos, "zonen": {}}
     for cod, z in ZONAS.items():
-        out["zonen"][cod] = {k: [r0(serie[z].get(k, {}).get(t, 0)) for t in tiempos] for k in FILTROS.values()}
+        # SMARD liefert je Viertelstunde Energie (MWh); x4 = mittlere Leistung in MW
+        out["zonen"][cod] = {k: [r0(4 * serie[z].get(k, {}).get(t, 0)) for t in tiempos] for k in FILTROS.values()}
     return out
 
 # ---------- Energy-Charts ----------
