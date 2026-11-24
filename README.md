@@ -43,3 +43,12 @@ https://controlvegetal.github.io/monitor-energia/de/ — misma idea, en alemán,
 - Datos: SMARD.de (Bundesnetzagentur) y Energy-Charts (Fraunhofer ISE), licencia CC BY 4.0.
 - Energy-Charts no deja leer sus datos desde el navegador, así que un job de GitHub Actions (`.github/workflows/datos-alemania.yml`) los baja cada 15 minutos con `de/herramientas/actualizar_datos.py` y los guarda en la rama `datos-de`. La página lee ese archivo.
 - SMARD publica los datos por zona con cerca de un día de demora: el mapa muestra el último momento completo; "Deutschland jetzt" y los precios son de hace 1 a 2 horas.
+
+## Emisores de CO₂ (`emisiones/`)
+
+Mapa de las instalaciones de Argentina que más gases de efecto invernadero emiten (centrales, petróleo y gas, industria, minería, residuos), con totales y ranking por provincia y sector, ficha de cada instalación y descarga en CSV.
+
+- Datos: [Climate TRACE](https://climatetrace.org), licencia CC BY 4.0. Son **estimaciones anuales**, no mediciones.
+- `emisiones/datos/instalaciones.json` lo arma `emisiones/herramientas/armar_instalaciones.py` desde el paquete descargable de Argentina (emisiones por año) y la API v6 (propietarios). Para actualizarlo: Actions > datos-emisiones > Run workflow, y copiar el archivo de la rama `datos-emisiones` (o del artefacto) al repo con un PR.
+- `emisiones/datos/provincias.json`: contornos de Natural Earth (`emisiones/herramientas/generar_provincias.py`).
+- Petróleo y gas figuran por cuenca, no por pozo; los feedlots solo suman a los totales (Climate TRACE los estima en grilla).
