@@ -8,30 +8,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          set +e
-          O="Origin: https://controlvegetal.github.io"
-          p() { echo; echo "=== $1"; curl -s -m 30 -D /tmp/h -o /tmp/b -H "$O" "$1"; grep -iE "^HTTP|access-control|content-type|cache-control|content-length" /tmp/h; head -c ${2:-600} /tmp/b; echo; }
-          p "https://www.smard.de/app/chart_data/410/DE/index_quarterhour.json" 300
-          for r in 50Hertz Amprion TenneT TransnetBW DE-LU; do p "https://www.smard.de/app/chart_data/4068/$r/index_quarterhour.json" 200; done
-          TS=$(curl -s https://www.smard.de/app/chart_data/4068/50Hertz/index_quarterhour.json | python3 -c "import json,sys;print(json.load(sys.stdin)['timestamps'][-1])")
-          echo "TS=$TS"
-          curl -s https://www.smard.de/app/chart_data/4068/50Hertz/4068_50Hertz_quarterhour_$TS.json | python3 -c "import json,sys;d=json.load(sys.stdin)['series'];v=[x for x in d if x[1] is not None];print(len(d),len(v),v[-3:])"
-          for f in 410 1223 1224 4066 1225 4067 4068 1226 1227 1228 4069 4070 4071 4359 4387; do for r in 50Hertz TransnetBW; do
-            T=$(curl -s https://www.smard.de/app/chart_data/$f/$r/index_hour.json | python3 -c "import json,sys;print(json.load(sys.stdin)['timestamps'][-1])" 2>/dev/null)
-            echo -n "f=$f r=$r hour "; curl -s https://www.smard.de/app/chart_data/$f/$r/${f}_${r}_hour_$T.json | python3 -c "import json,sys;d=json.load(sys.stdin)['series'];v=[x for x in d if x[1] is not None];print(len(v),v[-1] if v else None)" 2>&1 | head -c 200; echo
-            T=$(curl -s https://www.smard.de/app/chart_data/$f/$r/index_quarterhour.json | python3 -c "import json,sys;print(json.load(sys.stdin)['timestamps'][-1])" 2>/dev/null)
-            echo -n "f=$f r=$r qh "; curl -s https://www.smard.de/app/chart_data/$f/$r/${f}_${r}_quarterhour_$T.json | python3 -c "import json,sys;d=json.load(sys.stdin)['series'];v=[x for x in d if x[1] is not None];print(len(v),v[-1] if v else None)" 2>&1 | head -c 200; echo
-          done; done
-          for f in 4169 4996 4997; do T=$(curl -s https://www.smard.de/app/chart_data/$f/DE-LU/index_hour.json | python3 -c "import json,sys;print(json.load(sys.stdin)['timestamps'][-1])" 2>/dev/null); echo -n "price f=$f "; curl -s https://www.smard.de/app/chart_data/$f/DE-LU/${f}_DE-LU_hour_$T.json | python3 -c "import json,sys;d=json.load(sys.stdin)['series'];v=[x for x in d if x[1] is not None];print(len(v),v[-2:])" 2>&1|head -c 200; echo; done
-          p "https://api.energy-charts.info/public_power?country=de" 400
-          p "https://api.energy-charts.info/price?bzn=DE-LU" 400
-          p "https://api.energy-charts.info/cbpf?country=de" 1500
-          p "https://api.energy-charts.info/public_power?country=de&subregion=50Hertz" 300
-          curl -s https://api.energy-charts.info/openapi.json -o /tmp/o.json && python3 -c "
-          import json;o=json.load(open('/tmp/o.json'))
-          for k,v in o['paths'].items():
-            ps=[(p['name'],p.get('schema',{}).get('enum') or p.get('description','')[:150]) for p in v.get('get',{}).get('parameters',[])]
-            print(k, ps)
-          "
-          p "https://api.energy-charts.info/total_power?country=de" 400
-          for c in 50Hertz Amprion TenneT TransnetBW de_50hertz; do p "https://api.energy-charts.info/total_power?country=$c" 200; p "https://api.energy-charts.info/public_power?country=$c" 200; done
+          cat > /tmp/s.py <<'PY'
+          import json, urllib.request, datetime as dt
+          def get(u):
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'monitor-energia'}), timeout=30) as r: return json.load(r)
+              except Exception as e: return {'error': str(e)}
+          iso = lambda ms: dt.datetime.fromtimestamp(ms/1000, dt.UTC).strftime('%Y-%m-%d %H:%MZ')
+          def last(f, r, res='quarterhour'):
+              ix = get(f'https://www.smard.de/app/chart_data/{f}/{r}/index_{res}.json')
+              if 'timestamps' not in ix: return f'ERR {ix}'
+              out = []
+              for ts in ix['timestamps'][-2:]:
+                  d = get(f'https://www.smard.de/app/chart_data/{f}/{r}/{f}_{r}_{res}_{ts}.json')
+                  s = d.get('series', [])
+                  v = [x for x in s if x[1] is not None]
+                  out.append(f'chunk {iso(ts)} n={len(s)} nn={len(v)} last={iso(v[-1][0]) if v else None} val={v[-1][1] if v else None}')
+              return ' | '.join(out)
+          for r in ['DE', 'DE-LU', '50Hertz', 'Amprion', 'TenneT', 'TransnetBW']:
+              for f in [410, 4068, 4067, 4071]:
+                  print(r, f, last(f, r))
+          print('price qh', last(4169, 'DE-LU'))
+          print('price h', last(4169, 'DE-LU', 'hour'))
+          print('load fc', last(411, 'DE'))
+          for u in ['https://api.energy-charts.info/public_power?country=de', 'https://api.energy-charts.info/cbpf?country=de', 'https://api.energy-charts.info/price?bzn=DE-LU', 'https://api.energy-charts.info/cbet?country=de']:
+              d = get(u); t = d.get('unix_seconds', [])
+              print(u, d.get('error'), 'n', len(t), iso(t[0]*1000) if t else '', iso(t[-1]*1000) if t else '', d.get('license_info'), d.get('deprecated'))
+              for k in ('production_types', 'countries'):
+                  for p in d.get(k, []):
+                      v = [(t[i], x) for i, x in enumerate(p['data']) if x is not None]
+                      print('   ', p['name'], 'nn', len(v), iso(v[-1][0]*1000) if v else None, v[-1][1] if v else None)
+              if 'price' in d:
+                  v=[(t[i],x) for i,x in enumerate(d['price']) if x is not None]; print('   price nn', len(v), iso(v[-1][0]*1000), v[-1][1], d.get('unit'))
+          PY
+          python3 /tmp/s.py
+          curl -sI -H "Origin: https://controlvegetal.github.io" https://raw.githubusercontent.com/ControlVegetal/monitor-energia/main/README.md | grep -iE "^HTTP|access-control|cache-control"
