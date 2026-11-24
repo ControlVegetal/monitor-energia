@@ -524,7 +524,7 @@ async function cargar() {
 }
 
 async function iniciar() {
-  estado.geo = await (await fetch("datos/regiones.json")).json();
+  estado.geo = await (await fetch("datos/regiones.json?v=2026112401")).json();
   armarMapa();
   activarArrastre();
   document.querySelectorAll('input[name="modo"]').forEach((b) => b.addEventListener("change", () => { estado.modo = b.value; dibujar(); }));
