@@ -379,6 +379,7 @@ function dibujar() {
   dibujarPais();
   dibujarRegion();
   dibujarFlujos();
+  dibujarDia();
   dibujarHora();
 }
 
@@ -488,6 +489,47 @@ function tipRegion(ev, id) {
 
 function seleccionar(id) { estado.sel = estado.sel === id ? null : id; dibujar(); }
 
+// Resumen del día por hora (país): demanda, parte renovable y carbono, con los datos reales ya publicados.
+function resumenDia() {
+  const { idx } = estado.datos, horas = new Map();
+  estado.claves.forEach((k, i) => {
+    const g = idx.gen[NACIONAL].get(k), d = idx.dem[NACIONAL]?.get(k);
+    const tot = TIPOS.reduce((s, t) => s + limpio(g[t.k]), 0) + limpio(g.importacion);
+    const dem = d ? limpio(d.dem) : estado.geo.regiones.reduce((s, r) => s + limpio(idx.dem[r.id].get(k).dem), 0);
+    const h = k.slice(11, 13), o = horas.get(h) || { h, n: 0, dem: 0, ren: 0, co2: 0, i };
+    o.n++; o.dem += dem; o.i = i;
+    o.ren += tot > 0 ? limpio(g.renovable) / tot : 0;
+    o.co2 += tot > 0 ? (G_CO2_TERMICO * limpio(g.termico)) / tot : 0;
+    horas.set(h, o);
+  });
+  return [...horas.values()].map((o) => ({ h: o.h, i: o.i, dem: o.dem / o.n, ren: o.ren / o.n, co2: o.co2 / o.n }));
+}
+
+function dibujarDia() {
+  const H = resumenDia();
+  if (!H.length) { $("#dia").innerHTML = ""; return; }
+  const min = (f) => H.reduce((a, b) => (f(b) < f(a) ? b : a));
+  const menorDem = min((x) => x.dem), masRen = min((x) => -x.ren), menosCo2 = min((x) => x.co2);
+  const actual = estado.calc.k.slice(11, 13);
+  const maxDem = Math.max(...H.map((x) => x.dem)), minDem = Math.min(...H.map((x) => x.dem));
+  const W = 24, alto = 70;
+  const barras = H.map((x) => {
+    const hb = 12 + ((x.dem - minDem) / Math.max(maxDem - minDem, 1)) * (alto - 12);
+    const n = Number(x.h);
+    return `<rect x="${n * W + 2}" y="${alto - hb}" width="${W - 4}" height="${hb}" rx="2" class="dia-barra${x.h === actual ? " actual" : ""}" data-i="${x.i}" style="--r:${x.ren}"><title>${x.h} h · ${fmt(x.dem)} MW · ${pct(x.ren)} renovable · ${fmt(x.co2)} gCO₂/kWh</title></rect>`;
+  }).join("");
+  const ticks = [0, 6, 12, 18, 23].map((n) => `<text x="${n * W + W / 2}" y="${alto + 13}" text-anchor="middle">${String(n).padStart(2, "0")}</text>`).join("");
+  $("#dia").innerHTML = `
+    <div class="dia-datos">
+      <div><span class="kpi-l">Menor demanda</span><span class="kpi-v">${menorDem.h} h</span><span class="kpi-l">${fmt(menorDem.dem)} MW</span></div>
+      <div><span class="kpi-l">Más renovables</span><span class="kpi-v">${masRen.h} h</span><span class="kpi-l">${pct(masRen.ren)} de la generación</span></div>
+      <div><span class="kpi-l">Menos carbono</span><span class="kpi-v">${menosCo2.h} h</span><span class="kpi-l">${fmt(menosCo2.co2)} gCO₂/kWh</span></div>
+    </div>
+    <svg class="dia-graf" viewBox="0 0 ${24 * W} ${alto + 16}" role="img" aria-label="Demanda por hora">${barras}${ticks}</svg>
+    <p class="pista">Altura: demanda del país por hora. Más verde: más renovable. Tocá una barra para ver esa hora.</p>`;
+  $("#dia").querySelectorAll(".dia-barra").forEach((b) => b.addEventListener("click", () => irA(Number(b.dataset.i))));
+}
+
 function irA(idx) {
   idx = Math.max(0, Math.min(idx, estado.claves.length - 1));
   estado.idx = idx;
@@ -527,7 +569,7 @@ async function cargar() {
 }
 
 async function iniciar() {
-  estado.geo = await (await fetch("datos/regiones.json?v=2026112402")).json();
+  estado.geo = await (await fetch("datos/regiones.json?v=2026112403")).json();
   armarMapa();
   activarArrastre();
   document.querySelectorAll('input[name="modo"]').forEach((b) => b.addEventListener("change", () => { estado.modo = b.value; dibujar(); }));
