@@ -32,6 +32,7 @@ const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v
 
 // ---------- Datos ----------
 const hoyAR = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+const ayerAR = () => { const d = new Date(Date.now() - 864e5); return d.toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }); };
 const clave = (fecha) => String(fecha).slice(0, 16); // "2026-11-24T10:05"
 const limpio = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0; }; // negativos -> 0
 
@@ -90,11 +91,19 @@ async function cargarEnVivo() {
     err.fallas = fallas;
     throw err;
   }
+  // Para el gráfico de las últimas 24 h: el país de ayer (si falla, el gráfico usa solo hoy)
+  const ayer = ayerAR();
+  datos.ayer = { gen: [], dem: [] };
+  try { datos.ayer.dem = await pedir(`demanda/ObtieneDemandaYTemperaturaRegionByFecha?id_region=${NACIONAL}&fecha=${ayer}`, 2); } catch {}
+  try {
+    const g = await pedir(`generacion/ObtieneGeneracioEnergiaPorRegion?id_region=${NACIONAL}&fecha=${ayer}`, 2);
+    datos.ayer.gen = g.filter((f) => String(f.fecha).startsWith(ayer)); // solo si la API de verdad devuelve ayer
+  } catch {}
   return datos;
 }
 
 function indexar(datos) {
-  const idx = { gen: {}, dem: {} };
+  const idx = { gen: {}, dem: {}, ayer: datos.ayer || { gen: [], dem: [] } };
   for (const t of ["gen", "dem"]) {
     for (const [id, filas] of Object.entries(datos[t])) {
       const m = new Map();
@@ -501,45 +510,64 @@ function tipRegion(ev, id) {
 
 function seleccionar(id) { estado.sel = estado.sel === id ? null : id; dibujar(); }
 
-// Resumen del día por hora (país): demanda, parte renovable y carbono, con los datos reales ya publicados.
+// Últimas 24 horas del país, por hora: demanda, parte renovable y carbono (datos reales de CAMMESA).
+// Usa el total nacional, que se publica antes que las regiones, más los datos de ayer.
 function resumenDia() {
-  const { idx } = estado.datos, horas = new Map();
-  estado.claves.forEach((k, i) => {
-    const g = idx.gen[NACIONAL].get(k), d = idx.dem[NACIONAL]?.get(k);
-    const tot = TIPOS.reduce((s, t) => s + limpio(g[t.k]), 0) + limpio(g.importacion);
-    const dem = d ? limpio(d.dem) : estado.geo.regiones.reduce((s, r) => s + limpio(idx.dem[r.id].get(k).dem), 0);
-    const h = k.slice(11, 13), o = horas.get(h) || { h, n: 0, dem: 0, ren: 0, co2: 0, i };
-    o.n++; o.dem += dem; o.i = i;
-    o.ren += tot > 0 ? limpio(g.renovable) / tot : 0;
-    o.co2 += tot > 0 ? (G_CO2_TERMICO * limpio(g.termico)) / tot : 0;
-    horas.set(h, o);
-  });
-  return [...horas.values()].map((o) => ({ h: o.h, i: o.i, dem: o.dem / o.n, ren: o.ren / o.n, co2: o.co2 / o.n }));
+  const { idx } = estado.datos;
+  const dem = new Map(), gen = new Map();
+  for (const f of idx.ayer.dem) dem.set(clave(f.fecha), limpio(f.dem));
+  for (const f of idx.ayer.gen) gen.set(clave(f.fecha), f);
+  for (const [k, f] of idx.dem[NACIONAL] || []) dem.set(k, limpio(f.dem));
+  for (const [k, f] of idx.gen[NACIONAL] || []) gen.set(k, f);
+  const claves = [...dem.keys()].filter((k) => dem.get(k) > 0).sort();
+  if (!claves.length) return [];
+  const ultima = claves[claves.length - 1];
+  const desde = new Date(new Date(ultima.slice(0, 13) + ":00:00Z").getTime() - 23 * 3600e3).toISOString().slice(0, 13);
+  const pos = new Map(estado.claves.map((k, i) => [k, i]));
+  const horas = new Map();
+  for (const k of claves) {
+    const hk = k.slice(0, 13);
+    if (hk < desde) continue;
+    const o = horas.get(hk) || { hk, h: k.slice(11, 13), ayer: k.slice(0, 10) !== ultima.slice(0, 10), n: 0, dem: 0, ng: 0, ren: 0, co2: 0, i: null };
+    o.n++; o.dem += dem.get(k);
+    const g = gen.get(k);
+    if (g) {
+      const tot = TIPOS.reduce((s, t) => s + limpio(g[t.k]), 0) + limpio(g.importacion);
+      if (tot > 0) { o.ng++; o.ren += limpio(g.renovable) / tot; o.co2 += (G_CO2_TERMICO * limpio(g.termico)) / tot; }
+    }
+    if (pos.has(k)) o.i = pos.get(k);
+    horas.set(hk, o);
+  }
+  return [...horas.values()].map((o) => ({ ...o, dem: o.dem / o.n, ren: o.ng ? o.ren / o.ng : null, co2: o.ng ? o.co2 / o.ng : null }));
 }
 
 function dibujarDia() {
   const H = resumenDia();
   if (!H.length) { $("#dia").innerHTML = ""; return; }
-  const min = (f) => H.reduce((a, b) => (f(b) < f(a) ? b : a));
-  const menorDem = min((x) => x.dem), masRen = min((x) => -x.ren), menosCo2 = min((x) => x.co2);
-  const actual = estado.calc.k.slice(11, 13);
+  const mejor = (lista, f) => lista.reduce((a, b) => (f(b) < f(a) ? b : a));
+  const conGen = H.filter((x) => x.ren != null);
+  const menorDem = mejor(H, (x) => x.dem), mayorDem = mejor(H, (x) => -x.dem);
+  const masRen = conGen.length ? mejor(conGen, (x) => -x.ren) : null, menosCo2 = conGen.length ? mejor(conGen, (x) => x.co2) : null;
+  const et = (x) => (x ? `${x.h} h${x.ayer ? " <small>(ayer)</small>" : ""}` : "–");
+  const actual = estado.calc.k.slice(0, 13);
   const maxDem = Math.max(...H.map((x) => x.dem)), minDem = Math.min(...H.map((x) => x.dem));
   const W = 24, alto = 70;
-  const barras = H.map((x) => {
+  const barras = H.map((x, n) => {
     const hb = 12 + ((x.dem - minDem) / Math.max(maxDem - minDem, 1)) * (alto - 12);
-    const n = Number(x.h);
-    return `<rect x="${n * W + 2}" y="${alto - hb}" width="${W - 4}" height="${hb}" rx="2" class="dia-barra${x.h === actual ? " actual" : ""}" data-i="${x.i}" style="--r:${x.ren}"><title>${x.h} h · ${fmt(x.dem)} MW · ${pct(x.ren)} renovable · ${fmt(x.co2)} gCO₂/kWh</title></rect>`;
+    const clic = x.i != null ? ` data-i="${x.i}"` : "";
+    return `<rect x="${n * W + 2}" y="${alto - hb}" width="${W - 4}" height="${hb}" rx="2" class="dia-barra${x.hk === actual ? " actual" : ""}${x.i == null ? " sin-mapa" : ""}"${clic} style="--r:${x.ren ?? 0}"><title>${x.ayer ? "Ayer " : ""}${x.h} h · ${fmt(x.dem)} MW${x.ren != null ? ` · ${pct(x.ren)} renovable · ${fmt(x.co2)} gCO₂/kWh` : ""}</title></rect>`;
   }).join("");
-  const ticks = [0, 6, 12, 18, 23].map((n) => `<text x="${n * W + W / 2}" y="${alto + 13}" text-anchor="middle">${String(n).padStart(2, "0")}</text>`).join("");
+  const ticks = H.map((x, n) => (n % 4 === 0 || n === H.length - 1 ? `<text x="${n * W + W / 2}" y="${alto + 13}" text-anchor="middle">${x.h}</text>` : "")).join("");
   $("#dia").innerHTML = `
     <div class="dia-datos">
-      <div><span class="kpi-l">Menor demanda</span><span class="kpi-v">${menorDem.h} h</span><span class="kpi-l">${fmt(menorDem.dem)} MW</span></div>
-      <div><span class="kpi-l">Más renovables</span><span class="kpi-v">${masRen.h} h</span><span class="kpi-l">${pct(masRen.ren)} de la generación</span></div>
-      <div><span class="kpi-l">Menos carbono</span><span class="kpi-v">${menosCo2.h} h</span><span class="kpi-l">${fmt(menosCo2.co2)} gCO₂/kWh</span></div>
+      <div><span class="kpi-l">Menor demanda</span><span class="kpi-v">${et(menorDem)}</span><span class="kpi-l">${fmt(menorDem.dem)} MW</span></div>
+      <div><span class="kpi-l">Mayor demanda</span><span class="kpi-v">${et(mayorDem)}</span><span class="kpi-l">${fmt(mayorDem.dem)} MW</span></div>
+      <div><span class="kpi-l">Más renovables</span><span class="kpi-v">${et(masRen)}</span><span class="kpi-l">${masRen ? pct(masRen.ren) + " de la generación" : "sin datos"}</span></div>
+      <div><span class="kpi-l">Menos carbono</span><span class="kpi-v">${et(menosCo2)}</span><span class="kpi-l">${menosCo2 ? fmt(menosCo2.co2) + " gCO₂/kWh" : "sin datos"}</span></div>
     </div>
-    <svg class="dia-graf" viewBox="0 0 ${24 * W} ${alto + 16}" role="img" aria-label="Demanda por hora">${barras}${ticks}</svg>
-    <p class="pista">Altura: demanda del país por hora. Más verde: más renovable. Tocá una barra para ver esa hora.</p>`;
-  $("#dia").querySelectorAll(".dia-barra").forEach((b) => b.addEventListener("click", () => irA(Number(b.dataset.i))));
+    <svg class="dia-graf" viewBox="0 0 ${Math.max(H.length, 1) * W} ${alto + 16}" role="img" aria-label="Demanda por hora, últimas 24 horas">${barras}${ticks}</svg>
+    <p class="pista">Demanda del país por hora en las últimas 24 h. Más verde: más renovable. Tocá una barra para ver esa hora en el mapa.</p>`;
+  $("#dia").querySelectorAll(".dia-barra[data-i]").forEach((b) => b.addEventListener("click", () => irA(Number(b.dataset.i))));
 }
 
 function irA(idx) {
@@ -581,7 +609,7 @@ async function cargar() {
 }
 
 async function iniciar() {
-  estado.geo = await (await fetch("datos/regiones.json?v=2026112404")).json();
+  estado.geo = await (await fetch("datos/regiones.json?v=2026112405")).json();
   armarMapa();
   activarArrastre();
   document.querySelectorAll('input[name="modo"]').forEach((b) => b.addEventListener("change", () => { estado.modo = b.value; dibujar(); }));
