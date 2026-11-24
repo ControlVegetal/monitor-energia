@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Agrupa provincias (Natural Earth, dominio público) en las 9 regiones de CAMMESA y guarda datos/regiones.json.
-Uso: python3 herramientas/generar_regiones.py ne_10m_admin_1_states_provinces.geojson datos/regiones.json
-Fuente: https://github.com/nvkelso/natural-earth-vector (geojson/ne_10m_admin_1_states_provinces.geojson)"""
+También guarda los países vecinos (gris, solo de fondo).
+Uso: python3 herramientas/generar_regiones.py ne_10m_admin_1_states_provinces.geojson ne_50m_admin_0_countries.geojson datos/regiones.json
+Fuente: https://github.com/nvkelso/natural-earth-vector (carpeta geojson/)"""
 import json, sys, math
-from shapely.geometry import shape, Point, mapping
+from shapely.geometry import shape, Point, box
 from shapely.ops import unary_union
-src, out = sys.argv[1], sys.argv[2]
+src, src0, out = sys.argv[1], sys.argv[2], sys.argv[3]
 d = json.load(open(src))
 prov = {f['properties']['iso_3166_2']: shape(f['geometry']) for f in d['features'] if f['properties'].get('adm0_a3') == 'ARG'}
 R = {
@@ -24,7 +25,7 @@ geom[426] = gba
 geom[425] = prov['AR-B'].difference(gba)
 TOL = 0.025
 lat0 = -38.0; c = math.cos(math.radians(lat0)); K = 30
-LON0, LATMAX = -74.0, -21.5
+LON0, LATMAX, LON1, LATMIN = -84.0, -17.0, -42.0, -57.5
 def P(lon, lat): return ((lon - LON0) * c * K, (LATMAX - lat) * K)
 def path(g):
     g = g.simplify(TOL, preserve_topology=True)
@@ -38,7 +39,17 @@ def path(g):
     return ''.join(s)
 nodos = {426: (-58.45, -34.62), 425: (-60.8, -36.9), 417: (-60.6, -31.0), 418: (-58.9, -27.0), 419: (-65.4, -26.0),
          422: (-64.3, -32.4), 429: (-68.6, -33.3), 420: (-67.6, -38.8), 111: (-69.0, -46.5)}
-res = {'viewBox': [0, 0, round((-53.3 - LON0) * c * K, 1), round((LATMAX + 55.2) * K, 1)], 'regiones': [], 'sinRed': []}
+x0, y0 = P(-73.8, -21.6); x1, y1 = P(-53.4, -55.2)
+res = {'viewBox': [0, 0, round((LON1 - LON0) * c * K, 1), round((LATMAX - LATMIN) * K, 1)],
+       'vista': [round(x0, 1), round(y0, 1), round(x1 - x0, 1), round(y1 - y0, 1)], 'regiones': [], 'sinRed': [], 'vecinos': []}
+marco = box(LON0, LATMIN, LON1, LATMAX)
+for f in json.load(open(src0))['features']:
+    pr = f['properties']
+    if pr['ADM0_A3'] == 'ARG': continue
+    g = shape(f['geometry']).intersection(marco)
+    if g.is_empty: continue
+    d = path(g)
+    if d: res['vecinos'].append({'nombre': pr['NAME_ES'] or pr['NAME'], 'd': d})
 for rid, (cod, nom) in R.items():
     x, y = P(*nodos[rid])
     res['regiones'].append({'id': rid, 'codigo': cod, 'nombre': nom, 'd': path(geom[rid]), 'x': round(x, 1), 'y': round(y, 1)})

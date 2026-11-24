@@ -5,79 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor de Energía Argentina</title>
 <meta name="description" content="Mapa indicativo de dónde se genera la electricidad en Argentina, dónde se consume y cómo fluye entre regiones, con datos abiertos de CAMMESA.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2374acdf'/%3E%3Cpath d='M35 8 L18 36 H30 L27 56 L46 27 H34 Z' fill='%23ffffff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-<header class="cabecera">
-  <h1>Monitor de Energía <span>Argentina</span></h1>
-  <p class="sub">Generación, demanda y flujos estimados entre las 9 regiones del sistema eléctrico nacional (SADI). Datos abiertos de CAMMESA, cada 5 minutos.</p>
+<header class="barra">
+  <div class="titulo">
+    <h1>La electricidad de Argentina: dónde se genera y cómo viaja</h1>
+    <p>En vivo e indicativo: modelo de 9 regiones con datos abiertos de CAMMESA</p>
+  </div>
+  <div class="tiempo">
+    <button id="atras" class="btn" aria-label="5 minutos antes">◀</button>
+    <span id="horaTxt" class="hora-txt">Cargando…</span>
+    <button id="adelante" class="btn" aria-label="5 minutos después">▶</button>
+    <button id="vivo" class="btn vivo">En vivo</button>
+  </div>
 </header>
 
 <div id="aviso" class="aviso" hidden></div>
 
-<main class="grilla">
-  <section class="tarjeta mapa-tarjeta" aria-label="Mapa">
-    <div class="controles">
-      <div class="modos" role="tablist" aria-label="Color del mapa">
-        <button data-modo="balance" class="activo" role="tab">Exporta / importa</button>
-        <button data-modo="carbono" role="tab">Carbono (estimado)</button>
-        <button data-modo="origen" role="tab">De dónde viene</button>
-      </div>
-      <label class="hora">
-        <span>Hora: <strong id="horaTxt">–</strong></span>
-        <input id="horaSel" type="range" min="0" max="0" value="0" aria-label="Elegir hora del día">
-      </label>
+<main class="app">
+  <section class="mapa-zona" aria-label="Mapa">
+    <svg id="mapa" role="img" aria-label="Mapa de las regiones eléctricas de Argentina"></svg>
+
+    <div class="zoom">
+      <button id="zMas" aria-label="Acercar">+</button>
+      <button id="zMenos" aria-label="Alejar">−</button>
+      <button id="zAjustar" aria-label="Ver todo el país">⤢</button>
     </div>
-    <div class="mapa-cont">
-      <svg id="mapa" role="img" aria-label="Mapa de regiones eléctricas de Argentina"></svg>
-      <div id="tooltip" class="tooltip" hidden></div>
+
+    <div class="panel capas">
+      <label><input type="checkbox" id="capaBurbujas" checked> Generación por región</label>
+      <label><input type="checkbox" id="capaValores" checked> Valores de los flujos</label>
+      <hr>
+      <h3>Colorear regiones por</h3>
+      <label><input type="radio" name="modo" value="balance" checked> Exporta / importa</label>
+      <label><input type="radio" name="modo" value="carbono"> Carbono (estimado)</label>
+      <label><input type="radio" name="modo" value="origen"> Abastece a la región elegida</label>
     </div>
-    <div id="leyenda" class="leyenda"></div>
+
+    <div class="panel leyenda" id="leyenda"></div>
+    <div id="tooltip" class="tooltip" hidden></div>
   </section>
 
-  <section class="lateral">
-    <div class="tarjeta">
-      <h2>País <small id="fechaTxt"></small></h2>
-      <div class="kpis">
-        <div><span class="kpi-v" id="kGen">–</span><span class="kpi-l">Generación + importación (MW)</span></div>
-        <div><span class="kpi-v" id="kDem">–</span><span class="kpi-l">Demanda (MW)</span></div>
-        <div><span class="kpi-v" id="kImp">–</span><span class="kpi-l">Importación (MW)</span></div>
+  <aside class="lateral">
+    <section>
+      <h2>El país ahora</h2>
+      <div class="kpis kpis3">
+        <div><span class="kpi-v" id="kDem">–</span><span class="kpi-l">MW de demanda</span></div>
+        <div><span class="kpi-v" id="kGen">–</span><span class="kpi-l">MW generados + importados</span></div>
         <div><span class="kpi-v" id="kCo2">–</span><span class="kpi-l">gCO₂/kWh (estimado)</span></div>
       </div>
-      <div id="mixNac" class="mix"></div>
-      <div id="mixNacLeyenda" class="mix-leyenda"></div>
-    </div>
+      <div id="mixNac"></div>
+    </section>
 
-    <div class="tarjeta">
-      <h2 id="regTitulo">Región</h2>
-      <p class="pista" id="regPista">Tocá una región del mapa para ver su detalle.</p>
+    <section>
+      <h2 id="regTitulo">Elegí una región</h2>
       <div id="regDetalle"></div>
-    </div>
+    </section>
 
-    <div class="tarjeta">
-      <h2>Regiones</h2>
-      <table class="tabla" id="tabla">
-        <thead><tr><th>Región</th><th>Genera</th><th>Consume</th><th>Neto</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <p class="pista">MW. Neto positivo = exporta a otras regiones.</p>
-    </div>
-  </section>
+    <section>
+      <h2>Flujos entre regiones <small>(estimados)</small></h2>
+      <div id="listaFlujos" class="origenes"></div>
+    </section>
+
+    <details class="metodo">
+      <summary>Cómo se calcula, y sus límites</summary>
+      <ul>
+        <li><strong>Generación y demanda por región</strong> vienen directo de la API abierta de CAMMESA (<code>api.cammesa.com/demanda-svc</code>). Se usa la última hora en la que ya llegaron datos de todas las regiones, porque el último intervalo suele llegar incompleto.</li>
+        <li><strong>Los flujos entre regiones son un modelo indicativo, no mediciones de líneas.</strong> Se estiman con una aproximación de flujo DC sobre una red reducida de 12 corredores entre regiones vecinas, con impedancias aproximadas.</li>
+        <li><strong>"De dónde viene"</strong> reparte la energía que recibe una región entre las regiones que la generan, siguiendo los flujos estimados en proporción (método de Bialek).</li>
+        <li><strong>Importación y no asignado:</strong> CAMMESA da la importación como un solo número, sin país ni punto de entrada. Además, unos 700 a 800 MW de la generación nacional no aparecen en ninguna región. Esa energía, junto con la importación, se muestra como "sin ubicar" y se reparte entre las regiones en proporción a su demanda.</li>
+        <li><strong>Carbono:</strong> CAMMESA agrupa la generación en hidráulica, térmica, nuclear y renovable. Se estima 450 gCO₂/kWh para la térmica y 0 para el resto, así que es una aproximación.</li>
+        <li>Los valores negativos pequeños de la API (por ejemplo, consumo propio de centrales) se llevan a 0. Tierra del Fuego no está conectada al sistema nacional y no tiene datos.</li>
+        <li>No incluye precios ni centrales en tiempo real: la API abierta no los publica.</li>
+      </ul>
+      <p class="pista">Inspirado en GB Power Flow (timdaw37.github.io/gb-power-flow). Contornos: Natural Earth (dominio público), agrupados por región de CAMMESA; el Gran Buenos Aires es un área aproximada.</p>
+    </details>
+  </aside>
 </main>
-
-<section class="tarjeta metodo">
-  <h2>Cómo se calcula (y qué no muestra)</h2>
-  <ul>
-    <li><strong>Generación y demanda por región</strong> vienen directo de la API abierta de CAMMESA (<code>api.cammesa.com/demanda-svc</code>). Se usa la última hora en la que ya llegaron datos de todas las regiones, porque el último intervalo suele llegar incompleto.</li>
-    <li><strong>Los flujos entre regiones son un modelo indicativo, no mediciones de líneas.</strong> Se estiman con una aproximación de flujo DC sobre una red reducida de 12 corredores entre regiones vecinas, con impedancias aproximadas.</li>
-    <li><strong>"De dónde viene"</strong> reparte la energía que recibe una región entre las regiones que la generan, siguiendo los flujos estimados en proporción (método de Bialek).</li>
-    <li><strong>Importación y no asignado:</strong> CAMMESA da la importación como un solo número, sin país ni punto de entrada. Además, unos 700 a 800 MW de la generación nacional no aparecen en ninguna región. Esa energía, junto con la importación, se muestra como "sin ubicar" y se reparte entre las regiones en proporción a su demanda.</li>
-    <li><strong>Carbono:</strong> CAMMESA agrupa la generación en hidráulica, térmica, nuclear y renovable. Se estima 450 gCO₂/kWh para la térmica y 0 para el resto, así que es una aproximación.</li>
-    <li>Los valores negativos pequeños de la API (por ejemplo, consumo propio de centrales) se llevan a 0. Tierra del Fuego no está conectada al sistema nacional y no tiene datos.</li>
-    <li>No incluye precios ni centrales en tiempo real: la API abierta no los publica.</li>
-  </ul>
-  <p class="pista">Inspirado en GB Power Flow (timdaw37.github.io/gb-power-flow). Contornos: Natural Earth (dominio público), agrupados por región de CAMMESA; el Gran Buenos Aires es un área aproximada.</p>
-</section>
 
 <script src="app.js"></script>
 </body>
