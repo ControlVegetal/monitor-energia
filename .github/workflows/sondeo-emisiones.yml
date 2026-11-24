@@ -25,7 +25,10 @@ jobs:
           p admins "$B/v6/admins/search?name=Buenos&level=1"
           p dl "https://downloads.climatetrace.org/latest/country_packages/co2e_100yr/ARG.zip"
           p dl2 "https://downloads.climatetrace.org/v4.4.0/country_packages/co2e_100yr/ARG.zip"
+          rm -f dl.b dl2.b
+          sed -i -E 's/[ps]k\.[A-Za-z0-9._-]{20,}/TOKEN_QUITADO/g; s/access_token=[^"&]*/access_token=QUITADO/g' *.b
           for f in *.b; do head -c 3000 $f > ${f%.b}.muestra; done
+          cat resumen.txt; head -c 1500 assets5.b
           ls -la > listado.txt
           rm -f dl.b dl2.b
           find . -size +40M -delete
