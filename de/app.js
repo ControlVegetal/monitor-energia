@@ -307,7 +307,7 @@ function dibujar() {
 
   const gB = $("#burbujas"), gE = $("#etiquetas"); gB.replaceChildren(); gE.replaceChildren();
   calc.R.forEach((r, i) => {
-    const z = Z[i], rad = Math.sqrt(r.gen) / 3.4;
+    const z = Z[i], rad = Math.sqrt(r.gen) / 5.2;
     const nodo = estado.capas.burbujas ? torta(z.x, z.y, rad, TIPOS.map((t) => ({ v: r[t.k], c: t.c }))) : el("circle", { cx: z.x, cy: z.y, r: 4, class: "nodo" });
     nodo.addEventListener("click", () => { if (clicOk()) seleccionar(r.codigo); });
     nodo.addEventListener("mousemove", (ev) => tipZona(ev, r.codigo));
@@ -326,11 +326,11 @@ function dibujar() {
 
 function dibujarHora() {
   const t = estado.calc.c.t;
-  $("#horaTxt").textContent = `Karte: ${fDia(t)}. ${fHora(t)} Uhr` + (estado.enUltima ? " (neuester)" : "");
+  $("#horaTxt").textContent = `Karte: ${fDia(t)} ${fHora(t)} Uhr` + (estado.enUltima ? " (neuester)" : "");
   $("#atras").disabled = estado.idx <= 0;
   $("#adelante").disabled = estado.enUltima;
   $("#vivo").classList.toggle("activo", estado.enUltima);
-  $("#flujosHora").textContent = `(${fDia(t)}. ${fHora(t)} Uhr)`;
+  $("#flujosHora").textContent = `(${fDia(t)} ${fHora(t)} Uhr)`;
 }
 
 function dibujarLeyenda() {
@@ -402,7 +402,7 @@ function dibujarFlujos() {
   const Z = estado.geo.zonas, { calc } = estado;
   const internos = calc.flujos.map((f) => ({ n: `${Z[f.de].nombre} → ${Z[f.a].nombre}`, mw: f.mw, c: "--flujo" }));
   const externos = calc.paises.map((p) => ({ n: p.mw >= 0 ? `${p.nombre} → Deutschland` : `Deutschland → ${p.nombre}`, mw: Math.abs(p.mw), c: "--import" }));
-  const todos = [...internos, ...externos].filter((x) => x.mw >= 1);
+  const todos = [...internos, ...externos].filter((x) => x.mw >= 10);
   const max = Math.max(...todos.map((x) => x.mw), 1);
   const fila = (x) => `<div class="mf"><span class="mf-n">${esc(x.n)}</span><span class="mf-b"><i style="width:${(100 * x.mw) / max}%;background:var(${x.c})"></i></span><span class="mf-v">${fmt(x.mw)} MW</span></div>`;
   const saldo = calc.nac.imp;
