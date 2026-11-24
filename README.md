@@ -23,8 +23,9 @@ Es una página estática: el navegador de quien la visita le pide los datos dire
 
 - `index.html`, `estilos.css`, `app.js`: la página.
 - `datos/regiones.json`: contornos de las regiones (provincias de Natural Earth agrupadas por región de CAMMESA; el Gran Buenos Aires es un área aproximada).
-- `datos/ejemplo.json`: datos **ilustrativos** que se muestran, con un aviso, solo si la API no responde. También se ven con `?ejemplo` al final de la dirección.
-- `herramientas/`: scripts que generaron esos dos archivos.
+- `herramientas/`: el script que generó los contornos.
+
+Si la página no puede leer la API de CAMMESA, no muestra números: muestra un aviso con el motivo y reintenta cada minuto.
 
 ## Probarla en tu computadora
 
