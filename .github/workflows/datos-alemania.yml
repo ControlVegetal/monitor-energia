@@ -1,0 +1,35 @@
+# Lädt alle 15 Minuten die offenen Stromdaten für die Deutschland-Karte (/de/)
+# und legt sie im Zweig "datos-de" ab (de/actual.json). Der Zweig main bleibt unberührt.
+name: datos-alemania
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main, claude/project-thread-53hudt]
+    paths: [de/herramientas/actualizar_datos.py, .github/workflows/datos-alemania.yml]
+permissions:
+  contents: write
+concurrency:
+  group: datos-alemania
+  cancel-in-progress: false
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: de/herramientas
+      - name: Daten laden
+        run: |
+          curl -sf -o /tmp/anterior.json "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/datos-de/de/actual.json" || echo "{}" > /tmp/anterior.json
+          python3 de/herramientas/actualizar_datos.py /tmp/actual.json /tmp/anterior.json
+      - name: Im Zweig datos-de speichern
+        run: |
+          mkdir -p /tmp/pub/de && cp /tmp/actual.json /tmp/pub/de/actual.json && cd /tmp/pub
+          git init -q -b datos-de
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Daten $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" datos-de

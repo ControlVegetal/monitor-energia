@@ -34,3 +34,11 @@ python3 -m http.server 8000
 ```
 
 y abrir http://localhost:8000.
+
+## Versión para Alemania (`de/`)
+
+https://controlvegetal.github.io/monitor-energia/de/ — misma idea, en alemán, con las 4 zonas de los operadores (50Hertz, Amprion, TenneT, TransnetBW), los flujos con los países vecinos y el precio day-ahead.
+
+- Datos: SMARD.de (Bundesnetzagentur) y Energy-Charts (Fraunhofer ISE), licencia CC BY 4.0.
+- Energy-Charts no deja leer sus datos desde el navegador, así que un job de GitHub Actions (`.github/workflows/datos-alemania.yml`) los baja cada 15 minutos con `de/herramientas/actualizar_datos.py` y los guarda en la rama `datos-de`. La página lee ese archivo.
+- SMARD publica los datos por zona con cerca de un día de demora: el mapa muestra el último momento completo; "Deutschland jetzt" y los precios son de hace 1 a 2 horas.

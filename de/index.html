@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strommonitor Deutschland</title>
+<meta name="description" content="Indikative Karte: wo in Deutschland Strom erzeugt und verbraucht wird und wie er zwischen den vier Regelzonen und den Nachbarländern fließt. Offene Daten von SMARD und Energy-Charts.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23e0a030'/%3E%3Cpath d='M35 8 L18 36 H30 L27 56 L46 27 H34 Z' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="estilos.css?v=2026112401">
+</head>
+<body>
+<header class="barra">
+  <div class="titulo">
+    <h1>Strom in Deutschland: wo er erzeugt wird und wie er fließt</h1>
+    <p>Indikatives Modell der vier Regelzonen mit offenen Daten von SMARD und Energy-Charts</p>
+  </div>
+  <nav class="paises" aria-label="Land"><a href="../" lang="es">Argentinien</a><a href="./" aria-current="page">Deutschland</a></nav>
+  <div class="tiempo">
+    <button id="atras" class="btn" aria-label="15 Minuten zurück">◀</button>
+    <span id="horaTxt" class="hora-txt">Lädt…</span>
+    <button id="adelante" class="btn" aria-label="15 Minuten vor">▶</button>
+    <button id="vivo" class="btn vivo">Neuester Stand</button>
+  </div>
+</header>
+
+<div id="aviso" class="aviso" hidden></div>
+
+<main class="app">
+  <section class="mapa-zona" aria-label="Karte">
+    <svg id="mapa" role="img" aria-label="Karte der vier Regelzonen in Deutschland"></svg>
+
+    <div class="zoom">
+      <button id="zMas" aria-label="Vergrößern">+</button>
+      <button id="zMenos" aria-label="Verkleinern">−</button>
+      <button id="zAjustar" aria-label="Ganz Deutschland zeigen">⤢</button>
+    </div>
+
+    <div class="panel capas">
+      <label><input type="checkbox" id="capaBurbujas" checked> Erzeugung je Regelzone</label>
+      <label><input type="checkbox" id="capaGrenzen" checked> Flüsse mit Nachbarländern</label>
+      <label><input type="checkbox" id="capaValores" checked> Werte der Flüsse</label>
+      <hr>
+      <h3>Regelzonen einfärben nach</h3>
+      <label><input type="radio" name="modo" value="balance" checked> Export / Import</label>
+      <label><input type="radio" name="modo" value="carbono"> CO₂ (geschätzt)</label>
+      <label><input type="radio" name="modo" value="origen"> Versorgt die gewählte Zone</label>
+    </div>
+
+    <div class="panel leyenda" id="leyenda"></div>
+    <div id="tooltip" class="tooltip" hidden></div>
+  </section>
+
+  <aside class="lateral">
+    <section>
+      <h2>Deutschland jetzt</h2>
+      <div id="jetzt"></div>
+    </section>
+
+    <section>
+      <h2>Strompreis heute und morgen <small>(Day-Ahead)</small></h2>
+      <div id="preis"></div>
+    </section>
+
+    <section>
+      <h2>Letzte 24 Stunden</h2>
+      <div id="dia"></div>
+    </section>
+
+    <section>
+      <h2 id="regTitulo">Regelzone wählen</h2>
+      <div id="regDetalle"></div>
+    </section>
+
+    <section>
+      <h2>Stromflüsse <small id="flujosHora"></small></h2>
+      <div id="listaFlujos" class="origenes"></div>
+    </section>
+
+    <details class="metodo">
+      <summary>Wie es berechnet wird, und die Grenzen</summary>
+      <ul>
+        <li><strong>Erzeugung und Verbrauch je Regelzone</strong> (50Hertz, Amprion, TenneT, TransnetBW) stammen von SMARD. SMARD veröffentlicht diese Werte mit etwa einem Tag Verzögerung, deshalb zeigt die Karte den neuesten vollständig veröffentlichten Stand. „Deutschland jetzt“ und die Preise sind aktueller (Energy-Charts, etwa 1 bis 2 Stunden Verzögerung).</li>
+        <li><strong>Die Flüsse zwischen den Regelzonen sind ein indikatives Modell, keine Messungen.</strong> Sie werden mit einer linearen Lastfluss-Näherung (DC) über ein vereinfachtes Netz aus 4 Verbindungen mit ungefähren Impedanzen geschätzt.</li>
+        <li><strong>Flüsse mit den Nachbarländern</strong> sind gemessene physikalische Flüsse je Land (Energy-Charts). Die Aufteilung eines Landes auf die Regelzonen, an die es grenzt, ist eine Näherung.</li>
+        <li><strong>„Nicht zugeordnet“:</strong> Erzeugung, Verbrauch und Grenzflüsse kommen aus verschiedenen Meldungen und gehen nicht genau auf (meist einige GW). Die Differenz wird anteilig nach Verbrauch auf die Zonen verteilt und so angezeigt.</li>
+        <li><strong>„Woher kommt der Strom“</strong> verteilt den Strom, den eine Zone erhält, proportional entlang der geschätzten Flüsse auf die erzeugenden Zonen und die Importe.</li>
+        <li><strong>CO₂:</strong> geschätzt mit festen Faktoren: Braunkohle 1.100, Steinkohle 850, Erdgas 400, sonstige konventionelle 650 gCO₂/kWh, alles andere 0. Importe zählen nicht mit.</li>
+        <li>Die Grenzen der Regelzonen sind ungefähr (nach Bundesländern zusammengefasst).</li>
+      </ul>
+    </details>
+    <p class="quelle">Daten: <a href="https://www.smard.de" rel="noopener">Bundesnetzagentur | SMARD.de</a> und <a href="https://www.energy-charts.info" rel="noopener">Energy-Charts (Fraunhofer ISE)</a>, Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="noopener">CC BY 4.0</a>. Karte: Natural Earth (gemeinfrei). Werte werden alle 15 Minuten abgerufen.</p>
+  </aside>
+</main>
+
+<script src="app.js?v=2026112401"></script>
+</body>
+</html>
