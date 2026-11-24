@@ -1,0 +1,31 @@
+# Arma emisiones/datos/fabricas_osm.json con las fábricas con nombre de OpenStreetMap (ODbL) y lo deja en la rama datos-emisiones-osm.
+# Correrlo a mano (Actions > datos-osm > Run workflow) y copiar el archivo al repo con un PR.
+name: datos-osm
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-1iz5vj]
+    paths: [emisiones/herramientas/armar_osm.py, .github/workflows/datos-osm.yml]
+permissions:
+  contents: write
+jobs:
+  armar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: emisiones
+      - name: Descargar y armar
+        run: |
+          pip install -q shapely
+          curl -sfL -m 300 -o /tmp/prov.geojson "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson"
+          python3 emisiones/herramientas/armar_osm.py /tmp/prov.geojson emisiones/datos/instalaciones.json /tmp/fabricas_osm.json
+      - name: Guardar en la rama datos-emisiones-osm
+        run: |
+          mkdir -p /tmp/pub/emisiones/datos && cp /tmp/fabricas_osm.json /tmp/pub/emisiones/datos/ && cd /tmp/pub
+          git init -q -b datos-emisiones-osm
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Fábricas OSM $(date -u +%Y-%m-%d)"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" datos-emisiones-osm
