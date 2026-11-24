@@ -4,9 +4,6 @@
 name: datos-emisiones
 on:
   workflow_dispatch:
-  push:
-    branches: [claude/project-thread-1iz5vj]
-    paths: [emisiones/herramientas/armar_instalaciones.py, .github/workflows/datos-emisiones.yml]
 permissions:
   contents: write
 jobs:
