@@ -1,0 +1,37 @@
+# Arma emisiones/datos/instalaciones.json con los datos de Climate TRACE y lo deja en el zip "instalaciones".
+# Climate TRACE publica nuevas versiones pocas veces al año: correrlo a mano (Actions > datos-emisiones > Run workflow)
+# y copiar el archivo al repo con un PR.
+name: datos-emisiones
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-1iz5vj]
+    paths: [emisiones/herramientas/armar_instalaciones.py, .github/workflows/datos-emisiones.yml]
+permissions:
+  contents: write
+jobs:
+  armar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: emisiones/herramientas
+      - name: Descargar y armar
+        run: |
+          pip install -q shapely
+          curl -sfL -m 600 -o /tmp/ARG.zip "https://downloads.climatetrace.org/latest/country_packages/co2e_100yr/ARG.zip"
+          curl -sfL -m 300 -o /tmp/prov.geojson "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson"
+          python3 emisiones/herramientas/armar_instalaciones.py /tmp/ARG.zip /tmp/prov.geojson /tmp/instalaciones.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalaciones
+          path: /tmp/instalaciones.json
+      - name: Guardar en el rama datos-emisiones
+        run: |
+          mkdir -p /tmp/pub/emisiones/datos && cp /tmp/instalaciones.json /tmp/pub/emisiones/datos/ && cd /tmp/pub
+          git init -q -b datos-emisiones
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Datos Climate TRACE $(date -u +%Y-%m-%d)"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" datos-emisiones
