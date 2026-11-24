@@ -1,6 +1,6 @@
 # Monitor de Energía Argentina
 
-Mapa indicativo de dónde se genera la electricidad en Argentina, dónde se consume y cómo fluye entre las 9 regiones del sistema eléctrico nacional (SADI). Inspirado en [GB Power Flow](https://timdaw37.github.io/gb-power-flow/).
+Mapa indicativo de dónde se genera la electricidad en Argentina, dónde se consume y cómo fluye entre las 9 regiones del sistema eléctrico nacional (SADI).
 
 Es una página estática: el navegador de quien la visita le pide los datos directamente a la API abierta de CAMMESA (`https://api.cammesa.com/demanda-svc/`) y los actualiza cada 5 minutos. No hay servidor ni paso de compilación.
 
@@ -13,7 +13,7 @@ Es una página estática: el navegador de quien la visita le pide los datos dire
 
 ## Limitaciones
 
-- Los flujos entre regiones son un **modelo** (flujo DC sobre una red reducida de 12 corredores), no mediciones de líneas.
+- Los flujos entre regiones son un **modelo** (aproximación lineal sobre una red reducida de 12 corredores), no mediciones de líneas.
 - La importación llega como un solo número, sin país. Unos 700 a 800 MW de generación nacional no figuran en ninguna región; se muestran como "sin ubicar".
 - El mix viene en 4 tipos, así que el carbono es aproximado (450 gCO₂/kWh para la térmica).
 - No hay precios ni generación por central en la API abierta.

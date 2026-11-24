@@ -73,14 +73,14 @@
       <summary>Cómo se calcula, y sus límites</summary>
       <ul>
         <li><strong>Generación y demanda por región</strong> vienen directo de la API abierta de CAMMESA (<code>api.cammesa.com/demanda-svc</code>). Se usa la última hora en la que ya llegaron datos de todas las regiones, porque el último intervalo suele llegar incompleto.</li>
-        <li><strong>Los flujos entre regiones son un modelo indicativo, no mediciones de líneas.</strong> Se estiman con una aproximación de flujo DC sobre una red reducida de 12 corredores entre regiones vecinas, con impedancias aproximadas.</li>
-        <li><strong>"De dónde viene"</strong> reparte la energía que recibe una región entre las regiones que la generan, siguiendo los flujos estimados en proporción (método de Bialek).</li>
+        <li><strong>Los flujos entre regiones son un modelo indicativo, no mediciones de líneas.</strong> Se estiman con una aproximación lineal de flujo de potencia sobre una red reducida de 12 corredores entre regiones vecinas, con impedancias aproximadas.</li>
+        <li><strong>"De dónde viene"</strong> reparte la energía que recibe una región entre las regiones que la generan, siguiendo los flujos estimados en proporción.</li>
         <li><strong>Importación y no asignado:</strong> CAMMESA da la importación como un solo número, sin país ni punto de entrada. Además, unos 700 a 800 MW de la generación nacional no aparecen en ninguna región. Esa energía, junto con la importación, se muestra como "sin ubicar" y se reparte entre las regiones en proporción a su demanda.</li>
         <li><strong>Carbono:</strong> CAMMESA agrupa la generación en hidráulica, térmica, nuclear y renovable. Se estima 450 gCO₂/kWh para la térmica y 0 para el resto, así que es una aproximación.</li>
         <li>Los valores negativos pequeños de la API (por ejemplo, consumo propio de centrales) se llevan a 0. Tierra del Fuego no está conectada al sistema nacional y no tiene datos.</li>
         <li>No incluye precios ni centrales en tiempo real: la API abierta no los publica.</li>
       </ul>
-      <p class="pista">Inspirado en GB Power Flow (timdaw37.github.io/gb-power-flow). Contornos: Natural Earth (dominio público), agrupados por región de CAMMESA; el Gran Buenos Aires es un área aproximada.</p>
+      <p class="pista">Contornos de provincias de dominio público, agrupados por región de CAMMESA. El Gran Buenos Aires es un área aproximada.</p>
     </details>
   </aside>
 </main>
