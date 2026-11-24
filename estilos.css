@@ -94,3 +94,6 @@ h2 small { color: var(--suave); font-weight: 400; font-size: .85rem; }
 .barra i { display: block; height: 10px; border-radius: 3px; background: var(--acento); }
 .barra b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 code { font-size: .85em; }
+
+/* Sin datos reales todavía: no se muestra ningún número, solo el aviso */
+body.sin-datos .grilla, body.sin-datos .metodo { display: none; }

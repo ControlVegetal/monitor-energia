@@ -21,7 +21,7 @@ const TIPOS = [
   { k: "renovable", n: "Renovable", c: "--renovable" },
 ];
 
-const estado = { geo: null, datos: null, claves: [], idx: 0, modo: "balance", sel: 426, calc: null, ejemplo: false, enUltima: true };
+const estado = { geo: null, datos: null, claves: [], idx: 0, modo: "balance", sel: 426, calc: null, enUltima: true };
 const $ = (s) => document.querySelector(s);
 const fmt = (v) => (v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("es-AR"));
 const pct = (v) => (isFinite(v) ? Math.round(v * 100) + "%" : "–");
@@ -32,45 +32,62 @@ const hoyAR = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/
 const clave = (fecha) => String(fecha).slice(0, 16); // "2026-11-24T10:05"
 const limpio = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0; }; // negativos -> 0
 
-async function pedir(ruta, intentos = 2) {
-  for (let i = 0; ; i++) {
+// Pide un recurso a la API. Si falla, vuelve a intentar y, al final, averigua qué tipo de falla fue.
+async function pedir(ruta, intentos = 3) {
+  const url = API + ruta;
+  let ultimo;
+  for (let i = 0; i < intentos; i++) {
     try {
-      const r = await fetch(API + ruta, { cache: "no-store" });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const j = await r.json();
+      const r = await fetch(url); // GET simple, sin cabeceras extra (no dispara preflight CORS)
+      if (!r.ok) throw new Error("la API respondió HTTP " + r.status);
+      const txt = await r.text();
+      let j;
+      try { j = JSON.parse(txt); } catch { throw new Error("la API respondió algo que no es JSON (posible bloqueo del firewall)"); }
       if (!Array.isArray(j)) throw new Error("respuesta inesperada");
       return j;
     } catch (e) {
-      if (i + 1 >= intentos) throw e;
-      await new Promise((ok) => setTimeout(ok, 1500));
+      ultimo = e;
+      if (i + 1 < intentos) await new Promise((ok) => setTimeout(ok, 1500 * (i + 1)));
     }
   }
+  if (ultimo instanceof TypeError) {
+    // "Failed to fetch": ¿el servidor contestó sin permiso CORS (p. ej. página de bloqueo) o no contestó?
+    let contesto = false;
+    try { await fetch(url, { mode: "no-cors" }); contesto = true; } catch {}
+    throw new Error(contesto
+      ? "CAMMESA respondió, pero sin permiso para que la página lo lea (probablemente su firewall rechazó el pedido)"
+      : "no hubo respuesta de CAMMESA (conexión cortada o bloqueada)");
+  }
+  throw ultimo;
 }
 
 async function cargarEnVivo() {
   const ids = [NACIONAL, ...estado.geo.regiones.map((r) => r.id)];
+  const nombres = { [NACIONAL]: "total país", ...Object.fromEntries(estado.geo.regiones.map((r) => [r.id, r.nombre])) };
   const fecha = hoyAR();
   const tareas = [];
   for (const id of ids) {
     tareas.push(["gen", id, `generacion/ObtieneGeneracioEnergiaPorRegion?id_region=${id}`]);
     tareas.push(["dem", id, `demanda/ObtieneDemandaYTemperaturaRegionByFecha?id_region=${id}&fecha=${fecha}`]);
   }
-  const datos = { gen: {}, dem: {} };
-  // de a 4 pedidos por vez, para no saturar la API
+  const datos = { gen: {}, dem: {} }, fallas = [];
+  // de a 2 pedidos por vez y con una pausa corta, para no parecerle un ataque al firewall de CAMMESA
   let i = 0;
   async function trabajador() {
     while (i < tareas.length) {
       const [tipo, id, ruta] = tareas[i++];
-      datos[tipo][id] = await pedir(ruta);
+      try { datos[tipo][id] = await pedir(ruta); }
+      catch (e) { fallas.push(`${tipo === "gen" ? "generación" : "demanda"} ${nombres[id]}: ${e.message}`); }
+      await new Promise((ok) => setTimeout(ok, 250));
     }
   }
-  await Promise.all([trabajador(), trabajador(), trabajador(), trabajador()]);
+  await Promise.all([trabajador(), trabajador()]);
+  if (fallas.length) {
+    const err = new Error(`fallaron ${fallas.length} de ${tareas.length} pedidos. Primero: ${fallas[0]}`);
+    err.fallas = fallas;
+    throw err;
+  }
   return datos;
-}
-
-async function cargarEjemplo() {
-  const r = await fetch("datos/ejemplo.json");
-  return r.json();
 }
 
 function indexar(datos) {
@@ -385,21 +402,29 @@ function irA(idx) {
 
 function aviso(txt) { const a = $("#aviso"); a.hidden = !txt; a.textContent = txt || ""; }
 
+let reintento = null;
 async function cargar() {
-  const forzarEjemplo = new URLSearchParams(location.search).has("ejemplo");
-  let crudo, motivo = "";
-  if (!forzarEjemplo) {
-    try { crudo = await cargarEnVivo(); estado.ejemplo = false; }
-    catch (e) { motivo = String(e.message || e); }
+  clearTimeout(reintento);
+  let crudo, listo, motivo = "";
+  try {
+    crudo = await cargarEnVivo();
+    listo = indexar(crudo);
+    if (!listo.claves.length) motivo = "todavía no hay una hora con datos de todas las regiones";
+  } catch (e) {
+    motivo = String(e.message || e);
+    console.error("Monitor de Energía:", e.fallas || e);
   }
-  let listo = crudo && indexar(crudo);
-  if (crudo && !listo.claves.length) motivo = "todavía no hay una hora con datos de todas las regiones";
-  if (!listo || !listo.claves.length) {
-    crudo = await cargarEjemplo(); estado.ejemplo = true; listo = indexar(crudo);
+  if (motivo) {
+    const k = estado.calc?.k;
+    aviso(k
+      ? `No se pudieron actualizar los datos de CAMMESA (${motivo}). Se siguen mostrando los datos reales de las ${k.slice(11, 16)}. Reintentando en 1 minuto.`
+      : `No se pudieron leer los datos de CAMMESA (${motivo}). Reintentando en 1 minuto.`);
+    document.body.classList.toggle("sin-datos", !k);
+    reintento = setTimeout(() => cargar().catch(console.error), 60 * 1000);
+    return;
   }
-  aviso(estado.ejemplo
-    ? `Mostrando DATOS DE EJEMPLO, no reales${motivo ? ` (no se pudo leer la API de CAMMESA: ${motivo})` : ""}. Se vuelve a intentar cada ${ACTUALIZAR_MIN} minutos.`
-    : "");
+  aviso("");
+  document.body.classList.remove("sin-datos");
   const seguir = estado.enUltima || !estado.claves.length;
   estado.datos = listo; estado.claves = listo.claves;
   const s = $("#horaSel");
@@ -418,6 +443,8 @@ async function iniciar() {
   }));
   $("#horaSel").addEventListener("input", (e) => irA(Number(e.target.value)));
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", dibujar);
+  document.body.classList.add("sin-datos");
+  aviso("Leyendo los datos de CAMMESA…");
   await cargar();
   setInterval(() => cargar().catch(console.error), ACTUALIZAR_MIN * 60 * 1000);
 }
