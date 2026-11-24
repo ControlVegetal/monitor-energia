@@ -25,7 +25,10 @@ const estado = { geo: null, datos: null, claves: [], idx: 0, modo: "balance", se
 const $ = (s) => document.querySelector(s);
 const fmt = (v) => (v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("es-AR"));
 const pct = (v) => (isFinite(v) ? Math.round(v * 100) + "%" : "–");
-const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+// Colores de reserva: si el navegador tiene guardada una hoja de estilos vieja sin alguna variable,
+// el mapa igual se pinta (antes el modo carbono quedaba sin color).
+const COLORES = { "--neutro": "#f7f6f2", "--exporta": "#e0473e", "--importa": "#3a76d8", "--acento": "#2a78d6", "--co2-bajo": "#e9f4ea", "--co2-alto": "#5b3b24" };
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim() || COLORES[v] || "#999999";
 
 // ---------- Datos ----------
 const hoyAR = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
@@ -524,7 +527,7 @@ async function cargar() {
 }
 
 async function iniciar() {
-  estado.geo = await (await fetch("datos/regiones.json?v=2026112401")).json();
+  estado.geo = await (await fetch("datos/regiones.json?v=2026112402")).json();
   armarMapa();
   activarArrastre();
   document.querySelectorAll('input[name="modo"]').forEach((b) => b.addEventListener("change", () => { estado.modo = b.value; dibujar(); }));
