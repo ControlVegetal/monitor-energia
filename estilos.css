@@ -148,9 +148,11 @@ code { font-size: .85em; }
 body.sin-datos .app { display: none; }
 
 /* El día de hoy */
-.dia-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+.dia-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
 .dia-datos .kpi-v { font-size: 1.2rem; }
 .dia-graf { width: 100%; height: auto; display: block; }
 .dia-graf text { font-size: 11px; fill: var(--suave); }
 .dia-barra { fill: color-mix(in srgb, var(--renovable) min(100%, calc(var(--r) * 250%)), var(--sinubicar)); cursor: pointer; }
 .dia-barra.actual { stroke: var(--texto); stroke-width: 2; }
+.dia-barra.sin-mapa { cursor: default; opacity: .75; }
+.dia-datos small { font-size: .7rem; font-weight: 400; color: var(--suave); }
