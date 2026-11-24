@@ -3,7 +3,7 @@
 "use strict";
 
 const DATOS = "https://raw.githubusercontent.com/ControlVegetal/monitor-energia/datos-de/de/actual.json";
-const VERSION = "2026112401";
+const VERSION = "2026112402";
 const ACTUALIZAR_MIN = 5;
 const TZ = "Europe/Berlin";
 
@@ -322,6 +322,7 @@ function dibujar() {
   dibujarZona();
   dibujarFlujos();
   dibujarHora();
+  if (typeof dibujarAgro === "function") dibujarAgro();
 }
 
 function dibujarHora() {

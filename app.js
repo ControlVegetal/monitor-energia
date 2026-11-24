@@ -99,6 +99,15 @@ async function cargarEnVivo() {
     const g = await pedir(`generacion/ObtieneGeneracioEnergiaPorRegion?id_region=${NACIONAL}&fecha=${ayer}`, 2);
     datos.ayer.gen = g.filter((f) => String(f.fecha).startsWith(ayer)); // solo si la API de verdad devuelve ayer
   } catch {}
+  // Demanda de ayer por región (para la alerta de red exigida): se pide una sola vez por día
+  if (estado.ayerReg?.fecha !== ayer) {
+    const dem = {};
+    for (const r of estado.geo.regiones) {
+      try { dem[r.id] = await pedir(`demanda/ObtieneDemandaYTemperaturaRegionByFecha?id_region=${r.id}&fecha=${ayer}`, 2); } catch {}
+      await new Promise((ok) => setTimeout(ok, 250));
+    }
+    if (Object.keys(dem).length) estado.ayerReg = { fecha: ayer, dem };
+  }
   return datos;
 }
 
@@ -328,6 +337,7 @@ function colorRegion(r, i) {
     return t >= 0 ? mezcla(neutro, css("--exporta"), t) : mezcla(neutro, css("--importa"), -t);
   }
   if (modo === "carbono") return r.co2 == null ? neutro : mezcla(css("--co2-bajo"), css("--co2-alto"), r.co2 / G_CO2_TERMICO);
+  if (modo === "temp") return r.temp == null ? neutro : r.temp < 20 ? mezcla(neutro, css("--importa"), (20 - r.temp) / 20) : mezcla(neutro, css("--exporta"), (r.temp - 20) / 18);
   const sel = calc.R.findIndex((x) => x.id === (estado.sel ?? 426));
   const share = calc.origen[sel].porRegion[i];
   return mezcla(neutro, css("--acento"), Math.sqrt(share));
@@ -401,6 +411,7 @@ function dibujar() {
   dibujarFlujos();
   dibujarDia();
   dibujarHora();
+  if (typeof dibujarAgro === "function") dibujarAgro();
 }
 
 function dibujarHora() {
@@ -422,6 +433,10 @@ function dibujarLeyenda() {
     escala = `<h3>Carbono de su generación <small>(estimado)</small></h3>
       <span class="escala" style="background:linear-gradient(90deg,${css("--co2-bajo")},${css("--co2-alto")})"></span>
       <div class="escala-txt"><span>0</span><span>${G_CO2_TERMICO} gCO₂/kWh</span></div>`;
+  else if (estado.modo === "temp")
+    escala = `<h3>Temperatura ahora <small>(CAMMESA)</small></h3>
+      <span class="escala" style="background:linear-gradient(90deg,${css("--importa")},${n},${css("--exporta")})"></span>
+      <div class="escala-txt"><span>0 °C</span><span>20 °C</span><span>38 °C</span></div>`;
   else
     escala = `<h3>Abastece a ${esc(nombreDe(estado.sel ?? 426))}</h3>
       <span class="escala" style="background:linear-gradient(90deg,${n},${css("--acento")})"></span>
@@ -505,7 +520,7 @@ function ocultarTip() { $("#tooltip").hidden = true; }
 function tipRegion(ev, id) {
   const r = estado.calc?.R.find((x) => x.id === id);
   if (!r) return;
-  tip(ev, `<strong>${esc(r.nombre)}</strong><br>Genera ${fmt(r.gen)} MW · Consume ${fmt(r.dem)} MW<br>${r.neto >= 0 ? "Exporta" : "Importa"} ${fmt(Math.abs(r.neto))} MW`);
+  tip(ev, `<strong>${esc(r.nombre)}</strong><br>Genera ${fmt(r.gen)} MW · Consume ${fmt(r.dem)} MW<br>${r.neto >= 0 ? "Exporta" : "Importa"} ${fmt(Math.abs(r.neto))} MW${r.temp == null ? "" : `<br>${r.temp.toLocaleString("es-AR")} °C`}`);
 }
 
 function seleccionar(id) { estado.sel = estado.sel === id ? null : id; dibujar(); }
@@ -609,7 +624,7 @@ async function cargar() {
 }
 
 async function iniciar() {
-  estado.geo = await (await fetch("datos/regiones.json?v=2026112405")).json();
+  estado.geo = await (await fetch("datos/regiones.json?v=2026112407")).json();
   armarMapa();
   activarArrastre();
   document.querySelectorAll('input[name="modo"]').forEach((b) => b.addEventListener("change", () => { estado.modo = b.value; dibujar(); }));
