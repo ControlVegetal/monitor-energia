@@ -1,0 +1,39 @@
+name: sondeo-emisiones
+on:
+  push:
+    branches: [claude/project-thread-1iz5vj]
+    paths: [.github/workflows/sondeo-emisiones.yml]
+permissions:
+  contents: write
+jobs:
+  sondeo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Sondeo Climate TRACE
+        run: |
+          mkdir -p /tmp/pub/s && cd /tmp/pub/s
+          B=https://api.climatetrace.org
+          p(){ n=$1; u=$2; curl -s -m 120 -H "Origin: https://controlvegetal.github.io" -D $n.h -o $n.b "$u"; echo "$n $(head -1 $n.h) $(wc -c < $n.b)" >> resumen.txt; }
+          p sectors "$B/v6/definitions/sectors"
+          p subsectors "$B/v6/definitions/subsectors"
+          p gases "$B/v6/definitions/gases"
+          p assets5 "$B/v6/assets?countries=ARG&limit=5"
+          p assetsall "$B/v6/assets?countries=ARG&limit=1000&offset=0"
+          p assetsall2 "$B/v6/assets?countries=ARG&limit=1000&offset=1000"
+          p country "$B/v6/country/emissions?countries=ARG&since=2023&to=2024"
+          p admins "$B/v6/admins/search?name=Buenos&level=1"
+          p dl "https://downloads.climatetrace.org/latest/country_packages/co2e_100yr/ARG.zip"
+          p dl2 "https://downloads.climatetrace.org/v4.4.0/country_packages/co2e_100yr/ARG.zip"
+          for f in *.b; do head -c 3000 $f > ${f%.b}.muestra; done
+          ls -la > listado.txt
+          rm -f dl.b dl2.b
+          find . -size +40M -delete
+      - name: Guardar
+        run: |
+          cd /tmp/pub
+          git init -q -b sondeo-emisiones
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm sondeo
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" sondeo-emisiones
