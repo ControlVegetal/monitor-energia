@@ -6,7 +6,7 @@
 <title>Monitor de Energía Argentina</title>
 <meta name="description" content="Mapa indicativo de dónde se genera la electricidad en Argentina, dónde se consume y cómo fluye entre regiones, con datos abiertos de CAMMESA.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2374acdf'/%3E%3Cpath d='M35 8 L18 36 H30 L27 56 L46 27 H34 Z' fill='%23ffffff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="estilos.css?v=2026112406">
+<link rel="stylesheet" href="estilos.css?v=2026112407">
 </head>
 <body>
 <header class="barra">
@@ -42,6 +42,7 @@
       <h3>Colorear regiones por</h3>
       <label><input type="radio" name="modo" value="balance" checked> Exporta / importa</label>
       <label><input type="radio" name="modo" value="carbono"> Carbono (estimado)</label>
+      <label><input type="radio" name="modo" value="temp"> Temperatura</label>
       <label><input type="radio" name="modo" value="origen"> Abastece a la región elegida</label>
     </div>
 
@@ -65,6 +66,18 @@
       <div id="dia"></div>
     </section>
 
+    <section id="campo">
+      <h2>Para el campo <small>(clima y energía)</small></h2>
+      <label class="agro-reg">Región <select id="agroReg"></select></label>
+      <div id="agroClima"></div>
+      <h3>Mejores horas en las próximas 24 h</h3>
+      <div id="agroHoras"></div>
+      <h3>Estado de la red por región</h3>
+      <div id="agroRed"></div>
+      <h3>Huella de carbono por hora <small>(estimada)</small></h3>
+      <div id="agroCo2"></div>
+    </section>
+
     <section>
       <h2 id="regTitulo">Elegí una región</h2>
       <div id="regDetalle"></div>
@@ -85,12 +98,15 @@
         <li><strong>Carbono:</strong> CAMMESA agrupa la generación en hidráulica, térmica, nuclear y renovable. Se estima 450 gCO₂/kWh para la térmica y 0 para el resto, así que es una aproximación.</li>
         <li>Los valores negativos pequeños de la API (por ejemplo, consumo propio de centrales) se llevan a 0. Tierra del Fuego no está conectada al sistema nacional y no tiene datos.</li>
         <li>No incluye precios ni centrales en tiempo real: la API abierta no los publica.</li>
+        <li><strong>Para el campo:</strong> el pronóstico es de un punto por región (Buenos Aires, 9 de Julio, Rosario, Resistencia, Tucumán, Córdoba, Mendoza, Neuquén y Trelew). Las mejores horas combinan menor demanda y más renovables (según las últimas 24 h, suponiendo que el patrón se repite) con el clima previsto: poco viento y poca evaporación para regar, aire seco para secar granos, horas frescas para enfriar. Son una guía, no un cálculo de costos.</li>
       </ul>
       <p class="pista">Contornos de provincias de dominio público, agrupados por región de CAMMESA. El Gran Buenos Aires es un área aproximada.</p>
+      <p class="pista">Clima: <a href="https://open-meteo.com" rel="noopener">Open-Meteo.com</a>, licencia <a href="https://creativecommons.org/licenses/by/4.0/deed.es" rel="noopener">CC BY 4.0</a>.</p>
     </details>
   </aside>
 </main>
 
-<script src="app.js?v=2026112405"></script>
+<script src="app.js?v=2026112407"></script>
+<script src="agro.js?v=2026112407"></script>
 </body>
 </html>

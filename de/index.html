@@ -6,7 +6,7 @@
 <title>Strommonitor Deutschland</title>
 <meta name="description" content="Indikative Karte: wo in Deutschland Strom erzeugt und verbraucht wird und wie er zwischen den vier Regelzonen und den Nachbarländern fließt. Offene Daten von SMARD und Energy-Charts.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23e0a030'/%3E%3Cpath d='M35 8 L18 36 H30 L27 56 L46 27 H34 Z' fill='%23ffffff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="estilos.css?v=2026112401">
+<link rel="stylesheet" href="estilos.css?v=2026112402">
 </head>
 <body>
 <header class="barra">
@@ -61,6 +61,18 @@
       <div id="preis"></div>
     </section>
 
+    <section id="campo">
+      <h2>Für die Landwirtschaft <small>(Wetter und Strom)</small></h2>
+      <label class="agro-reg">Regelzone <select id="agroReg"></select></label>
+      <div id="agroClima"></div>
+      <h3>Beste Stunden in den nächsten 24 h</h3>
+      <div id="agroHoras"></div>
+      <h3>Netzlage und Wetter je Zone</h3>
+      <div id="agroRed"></div>
+      <h3>CO₂ je Stunde <small>(geschätzt)</small></h3>
+      <div id="agroCo2"></div>
+    </section>
+
     <section>
       <h2>Letzte 24 Stunden</h2>
       <div id="dia"></div>
@@ -86,12 +98,14 @@
         <li><strong>„Woher kommt der Strom“</strong> verteilt den Strom, den eine Zone erhält, proportional entlang der geschätzten Flüsse auf die erzeugenden Zonen und die Importe.</li>
         <li><strong>CO₂:</strong> geschätzt mit festen Faktoren: Braunkohle 1.100, Steinkohle 850, Erdgas 400, sonstige konventionelle 650 gCO₂/kWh, alles andere 0. Importe zählen nicht mit.</li>
         <li>Die Grenzen der Regelzonen sind ungefähr (nach Bundesländern zusammengefasst).</li>
+        <li><strong>Für die Landwirtschaft:</strong> Wettervorhersage für einen Ort je Zone (Magdeburg, Hannover, Köln, Stuttgart). Die besten Stunden verbinden den Day-Ahead-Preis mit dem Wetter: wenig Wind und Verdunstung zum Bewässern, trockene Luft zum Trocknen, kühle Stunden zum Kühlen. Nur ein Richtwert, keine Kostenrechnung.</li>
       </ul>
     </details>
-    <p class="quelle">Daten: <a href="https://www.smard.de" rel="noopener">Bundesnetzagentur | SMARD.de</a> und <a href="https://www.energy-charts.info" rel="noopener">Energy-Charts (Fraunhofer ISE)</a>, Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="noopener">CC BY 4.0</a>. Karte: Natural Earth (gemeinfrei). Werte werden alle 15 Minuten abgerufen.</p>
+    <p class="quelle">Daten: <a href="https://www.smard.de" rel="noopener">Bundesnetzagentur | SMARD.de</a> und <a href="https://www.energy-charts.info" rel="noopener">Energy-Charts (Fraunhofer ISE)</a>, Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="noopener">CC BY 4.0</a>. Wetter: <a href="https://open-meteo.com" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Karte: Natural Earth (gemeinfrei). Werte werden alle 15 Minuten abgerufen.</p>
   </aside>
 </main>
 
-<script src="app.js?v=2026112401"></script>
+<script src="app.js?v=2026112402"></script>
+<script src="agro.js?v=2026112402"></script>
 </body>
 </html>

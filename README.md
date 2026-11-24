@@ -10,6 +10,7 @@ Es una página estática: el navegador de quien la visita le pide los datos dire
 - Flujos estimados entre regiones (líneas con ancho proporcional a los MW).
 - Mix nacional (hidráulica, térmica, nuclear, renovable, importación) y detalle por región.
 - Un control para recorrer las horas del día.
+- **Para el campo:** pronóstico por región (temperatura, lluvia, viento, humedad, evapotranspiración), mejores horas para riego y bombeo, secado de granos y frío, estado de la red por región (cerca del pico, calor extremo) y huella de carbono por hora con descarga en CSV. Clima de Open-Meteo.com (CC BY 4.0), un punto por región.
 
 ## Limitaciones
 
@@ -21,7 +22,7 @@ Es una página estática: el navegador de quien la visita le pide los datos dire
 
 ## Archivos
 
-- `index.html`, `estilos.css`, `app.js`: la página.
+- `index.html`, `estilos.css`, `app.js`: la página. `agro.js`: la sección "Para el campo".
 - `datos/regiones.json`: contornos de las regiones (provincias de Natural Earth agrupadas por región de CAMMESA; el Gran Buenos Aires es un área aproximada).
 - `herramientas/`: el script que generó los contornos.
 
@@ -37,7 +38,7 @@ y abrir http://localhost:8000.
 
 ## Versión para Alemania (`de/`)
 
-https://controlvegetal.github.io/monitor-energia/de/ — misma idea, en alemán, con las 4 zonas de los operadores (50Hertz, Amprion, TenneT, TransnetBW), los flujos con los países vecinos y el precio day-ahead.
+https://controlvegetal.github.io/monitor-energia/de/ — misma idea, en alemán, con las 4 zonas de los operadores (50Hertz, Amprion, TenneT, TransnetBW), los flujos con los países vecinos y el precio day-ahead. También tiene la sección para el campo ("Für die Landwirtschaft"), donde las mejores horas se eligen por precio day-ahead.
 
 - Datos: SMARD.de (Bundesnetzagentur) y Energy-Charts (Fraunhofer ISE), licencia CC BY 4.0.
 - Energy-Charts no deja leer sus datos desde el navegador, así que un job de GitHub Actions (`.github/workflows/datos-alemania.yml`) los baja cada 15 minutos con `de/herramientas/actualizar_datos.py` y los guarda en la rama `datos-de`. La página lee ese archivo.

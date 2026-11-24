@@ -190,3 +190,25 @@ body.sin-datos .app { display: none; }
 .paises a { padding: 4px 10px; color: var(--texto); text-decoration: none; }
 .paises a + a { border-left: 1px solid var(--borde); }
 .paises a[aria-current] { background: var(--texto); color: var(--fondo); }
+
+/* Para el campo */
+#campo .kpis3 { row-gap: 12px; }
+.agro-reg { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--suave); margin-bottom: 10px; }
+.agro-reg select { font: inherit; color: var(--texto); background: var(--fondo); border: 1px solid var(--borde); border-radius: 6px; padding: 4px 8px; }
+.agro-nota { margin: 10px 0 0; padding: 6px 10px; border-radius: 6px; background: color-mix(in srgb, var(--acento) 12%, transparent); font-size: .85rem; }
+.agro-filas { display: grid; gap: 8px; }
+.agro-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; align-items: baseline; }
+.agro-n { font-weight: 600; font-size: .88rem; }
+.agro-v { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.agro-v small { font-weight: 400; color: var(--suave); }
+.agro-por { grid-column: 1 / -1; color: var(--suave); font-size: .78rem; }
+.agro-tabla { display: grid; gap: 4px; font-size: .82rem; font-variant-numeric: tabular-nums; }
+.agro-tabla > div { display: grid; grid-template-columns: minmax(0, 1.5fr) 0.8fr 0.9fr 0.9fr minmax(0, 1.3fr); gap: 6px; align-items: center; }
+.agro-tabla > div > span:not(:first-child) { text-align: right; }
+.agro-cab { color: var(--suave); font-size: .72rem; line-height: 1.2; }
+.agro-est { font-size: .75rem; font-weight: 600; border-radius: 4px; padding: 1px 6px; justify-self: end; }
+.agro-est.ok { color: var(--suave); }
+.agro-est.media { background: color-mix(in srgb, #e7b416 25%, transparent); }
+.agro-est.alta { background: color-mix(in srgb, var(--exporta) 25%, transparent); }
+.agro-csv { margin-top: 10px; font-size: .82rem; }
+.metodo a, .pista a { color: inherit; }
