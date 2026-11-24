@@ -1,6 +1,6 @@
 // Emisores de CO₂ en Argentina. Datos: Climate TRACE (CC BY 4.0), armados por emisiones/herramientas/armar_instalaciones.py.
 "use strict";
-const V = "2026112410";
+const V = "2026112411";
 const SVGNS = "http://www.w3.org/2000/svg";
 const $ = (id) => document.getElementById(id);
 
@@ -29,8 +29,18 @@ const CUENCAS = { Neuquen: "Cuenca Neuquina", "San Jorge": "Cuenca del Golfo San
 const RECURSOS = { "Shale oil": "shale oil", "Shale gas": "shale gas", "Tight gas": "tight gas", "Heavy oil": "petróleo pesado",
   "Conventional onshore": "convencional en tierra", "Conventional shelf": "convencional costa afuera", OtherResources: "otros recursos" };
 
-let D, P, provNombre = {}, porId = {};
-const est = { prov: "", sector: "", sel: null, mostrar: 15 };
+// Rubros de las fábricas de OpenStreetMap (sin dato de emisiones), según etiquetas y nombre
+const RUBROS = {
+  azucar: "Ingenios azucareros", automotriz: "Automotriz y maquinaria agrícola", metal: "Metalmecánica y metalurgia",
+  alimentos: "Alimentos y bebidas", textil: "Textil, cuero y calzado", quimica: "Química, plásticos y farmacia",
+  papel: "Papel, madera e imprenta", minerales: "Cerámica, vidrio y materiales", otra: "Otras fábricas",
+};
+let D, P, O = [], osmInfo = null, provNombre = {}, porId = {};
+const est = { prov: "", sector: "", sel: null, mostrar: 15, mostrarO: 30, q: "" };
+const esCT = () => !est.sector.startsWith("r:");
+const esOSM = () => !est.sector || est.sector.startsWith("r:");
+const plano = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const coincide = (x) => !est.q || plano(`${x.sd ? x.n : nombre(x)} ${x.sd ? x.o || "" : due(x).join(" ")}`).includes(est.q);
 let vista, vb;
 
 function nombre(x) {
@@ -59,6 +69,10 @@ async function iniciar() {
       fetch(`datos/provincias.json?v=${V}`).then((r) => { if (!r.ok) throw new Error(`provincias: HTTP ${r.status}`); return r.json(); }),
     ]);
     D = d; P = p;
+    try {
+      const o = await fetch(`datos/fabricas_osm.json?v=${V}`).then((r) => (r.ok ? r.json() : null));
+      if (o) { osmInfo = o; O = o.fabricas.map((x) => ({ ...x, id: "osm:" + x.id, osm: x.id, sd: true })); }
+    } catch (e) { console.warn("Sin fábricas de OpenStreetMap:", e); }
   } catch (e) {
     document.body.classList.add("sin-datos");
     $("aviso").hidden = false;
@@ -68,13 +82,25 @@ async function iniciar() {
   for (const pr of P.provincias) provNombre[pr.iso] = pr.nombre;
   provNombre.MAR = "Mar argentino";
   for (const x of D.instalaciones) porId[x.id] = x;
+  for (const x of O) porId[x.id] = x;
   $("avisoEst").textContent = `Estimaciones anuales de Climate TRACE para ${D.anio}, no mediciones. Sirven para saber quién es quién, no para certificar créditos.`;
   $("kTotL").textContent = `Mt CO₂e en ${D.anio}`;
   $("metaVer").textContent = `Versión ${D.version.replace(/_/g, ".")}, año ${D.anio}.`;
 
   const provs = Object.keys(D.totales).sort((a, b) => provNombre[a].localeCompare(provNombre[b], "es"));
   for (const p of provs) $("fProv").add(new Option(provNombre[p], p));
-  for (const g in GRUPOS) if (Object.values(D.totales).some((t) => t[g])) $("fSector").add(new Option(GRUPOS[g], g));
+  const og1 = document.createElement("optgroup"); og1.label = "Con emisiones estimadas";
+  for (const g in GRUPOS) if (Object.values(D.totales).some((t) => t[g])) og1.appendChild(new Option(GRUPOS[g], g));
+  $("fSector").appendChild(og1);
+  if (O.length) {
+    const og2 = document.createElement("optgroup"); og2.label = "Sin dato de emisiones";
+    const n = {}; for (const x of O) n[x.k] = (n[x.k] || 0) + 1;
+    for (const k in RUBROS) if (n[k]) og2.appendChild(new Option(`${RUBROS[k]} (${nf(n[k])})`, "r:" + k));
+    $("fSector").appendChild(og2);
+    $("osmMeta").textContent = `Datos de OpenStreetMap al ${new Date(osmInfo.osm_base).toLocaleDateString("es-AR")}.`;
+  } else $("bloqueOsm").hidden = true;
+  $("fBuscar").oninput = () => { est.q = plano($("fBuscar").value.trim()); est.mostrar = 15; est.mostrarO = 30; pintar(); };
+  $("verMasO").onclick = () => { est.mostrarO += 50; pintarOsm(); };
   $("fProv").onchange = () => { est.prov = $("fProv").value; est.mostrar = 15; est.sel = null; encuadrar(); pintar(); };
   $("fSector").onchange = () => { est.sector = $("fSector").value; est.mostrar = 15; est.sel = null; pintar(); };
   $("verMas").onclick = () => { est.mostrar += 25; pintarRanking(); };
@@ -100,6 +126,14 @@ function armarMapa() {
     pa.addEventListener("pointermove", (e) => tip(e, `<b>${esc(pr.nombre)}</b><br>${totProv(pr.iso) ? mt(totProv(pr.iso)) + " Mt CO₂e/año" : "Sin emisiones registradas"}`));
     pa.addEventListener("pointerleave", () => ($("tooltip").hidden = true));
   }
+  const go = el("g", { id: "gOsm" }, svg);
+  for (const x of O) {
+    const [cx, cy] = xy(x.lon, x.lat);
+    const c = el("circle", { class: "punto osm", cx: cx.toFixed(1), cy: cy.toFixed(1), r: 2.2, "data-id": x.id }, go);
+    c.addEventListener("click", (e) => { e.stopPropagation(); elegir(x.id); });
+    c.addEventListener("pointermove", (e) => tip(e, `<b>${esc(x.n)}</b><br>${esc(RUBROS[x.k])} · ${esc(provNombre[x.p] || x.p)}<br><i>Emisiones: sin dato</i>`));
+    c.addEventListener("pointerleave", () => ($("tooltip").hidden = true));
+  }
   const gi = el("g", { id: "gPuntos" }, svg);
   for (const x of [...D.instalaciones].sort((a, b) => b.e - a.e)) {
     const [cx, cy] = xy(x.lon, x.lat);
@@ -110,7 +144,7 @@ function armarMapa() {
   }
   zoomPanel(svg);
 }
-const radio = (e) => Math.max(1.8, Math.sqrt(e / 1e6) * 9);
+const radio = (e) => (e == null ? 2.2 : Math.max(1.8, Math.sqrt(e / 1e6) * 9));
 // Los puntos mantienen su tamaño en pantalla al acercar o alejar
 function escalarPuntos() {
   const k = vb[2] / vista[2];
@@ -119,7 +153,7 @@ function escalarPuntos() {
 
 function totProv(p) {
   const t = D.totales[p] || {};
-  return est.sector ? t[est.sector] || 0 : Object.values(t).reduce((a, b) => a + b, 0);
+  return est.sector && esCT() ? t[est.sector] || 0 : Object.values(t).reduce((a, b) => a + b, 0);
 }
 
 function tip(e, html) {
@@ -177,7 +211,13 @@ function elegirProv(iso) {
 
 /* ---------- Estado → pantalla ---------- */
 function filtradas() {
-  return D.instalaciones.filter((x) => (!est.sector || x.g === est.sector) && (!est.prov || x.p === est.prov));
+  if (!esCT()) return [];
+  return D.instalaciones.filter((x) => (!est.sector || x.g === est.sector) && (!est.prov || x.p === est.prov) && coincide(x));
+}
+function filtradasO() {
+  if (!esOSM()) return [];
+  const r = est.sector.slice(2);
+  return O.filter((x) => (!r || x.k === r) && (!est.prov || x.p === est.prov) && coincide(x));
 }
 
 function pintar() {
@@ -188,31 +228,40 @@ function pintar() {
     pa.setAttribute("fill", v ? `color-mix(in srgb, var(--co2-alto) ${Math.round(8 + f * 70)}%, var(--co2-bajo))` : "var(--tierra)");
     pa.classList.toggle("sel", pa.dataset.iso === est.prov);
   }
+  const r = est.sector.startsWith("r:") ? est.sector.slice(2) : null;
   for (const c of document.querySelectorAll(".punto")) {
     const x = porId[c.dataset.id];
-    c.style.display = !est.sector || x.g === est.sector ? "" : "none";
+    const vis = x.sd ? esOSM() && (!r || x.k === r) : esCT() && (!est.sector || x.g === est.sector);
+    c.style.display = vis && coincide(x) ? "" : "none";
     c.style.opacity = !est.prov || x.p === est.prov ? "" : ".25";
     c.classList.toggle("sel", x.id === est.sel);
   }
   const lista = filtradas();
   const total = est.prov ? tots[est.prov] || 0 : Object.values(tots).reduce((a, b) => a + b, 0);
   $("kTot").textContent = mt(total);
+  const listaO = filtradasO();
   $("kN").textContent = nf(lista.length);
+  $("kNo").textContent = nf(listaO.length);
   const top10 = lista.slice(0, 10).reduce((a, x) => a + x.e, 0);
   $("kTop").textContent = total ? `${nf((100 * top10) / total)}%` : "–";
-  $("topSub").textContent = `(${[est.prov && provNombre[est.prov], est.sector && GRUPOS[est.sector]].filter(Boolean).join(", ") || "todo el país"}, t CO₂e por año)`;
+  $("kTot").textContent = esCT() ? mt(total) : "–";
+  $("kTop").textContent = esCT() && total ? `${nf((100 * top10) / total)}%` : "–";
+  const filtro = [est.prov && provNombre[est.prov], est.sector && (GRUPOS[est.sector] || RUBROS[est.sector.slice(2)])].filter(Boolean).join(", ") || "todo el país";
+  $("topSub").textContent = `(${filtro}, t CO₂e por año)`;
+  $("osmSub").textContent = `(${filtro})`;
   pintarRanking();
+  pintarOsm();
   pintarProvincias(tots);
   pintarSectores();
   pintarLeyenda(max);
   pintarFicha();
-  armarCsv(lista);
+  armarCsv(lista, listaO);
 }
 
 function pintarRanking() {
   const lista = filtradas(), ol = $("ranking");
   ol.innerHTML = "";
-  if (!lista.length) ol.innerHTML = `<p class="pista">No hay instalaciones dibujadas con este filtro.${est.sector === "feedlot" ? " Los feedlots solo figuran en los totales." : ""}</p>`;
+  if (!lista.length) ol.innerHTML = `<p class="pista">${esCT() ? "No hay instalaciones con emisiones estimadas para este filtro." : "Este rubro no tiene emisiones estimadas: mirá la lista de abajo."}${est.sector === "feedlot" ? " Los feedlots solo figuran en los totales." : ""}</p>`;
   for (const x of lista.slice(0, est.mostrar)) {
     const li = document.createElement("li");
     li.className = x.id === est.sel ? "sel" : "";
@@ -223,6 +272,21 @@ function pintarRanking() {
     ol.appendChild(li);
   }
   $("verMas").hidden = lista.length <= est.mostrar;
+}
+
+function pintarOsm() {
+  const lista = filtradasO(), ol = $("listaOsm");
+  ol.innerHTML = "";
+  if (!lista.length) ol.innerHTML = `<p class="pista">${esOSM() ? "No hay fábricas para este filtro." : "Elegí \"Todos\" o un rubro sin dato de emisiones para verlas."}</p>`;
+  for (const x of lista.slice(0, est.mostrarO)) {
+    const li = document.createElement("li");
+    li.className = x.id === est.sel ? "sel" : "";
+    li.innerHTML = `<span class="rk-n" title="${esc(x.n)}">${esc(x.n)}</span><span class="rk-v sd">sin dato</span>
+      <span class="rk-d"><i class="hueco"></i>${esc(RUBROS[x.k])} · ${esc(provNombre[x.p] || x.p)}${x.o ? " · " + esc(x.o) : ""}</span>`;
+    li.onclick = () => elegir(x.id);
+    ol.appendChild(li);
+  }
+  $("verMasO").hidden = lista.length <= est.mostrarO;
 }
 
 function filas(cont, datos, alClick, selKey) {
@@ -254,7 +318,8 @@ function pintarLeyenda(max) {
   $("leyenda").innerHTML = `<h3>Instalaciones <small>(tamaño = emisiones)</small></h3>
     <div class="ley-g">${Object.keys(GRUPOS).filter((g) => g !== "feedlot").map((g) => `<span><i style="background:${col(g)}"></i>${GRUPOS[g]}</span>`).join("")}</div>
     <div class="ley-tam">${tam}</div>
-    <h3>Provincia <small>(total por año${est.sector ? ", " + GRUPOS[est.sector].toLowerCase() : ""})</small></h3>
+    ${O.length ? `<div class="ley-g" style="margin-top:6px"><span><i class="hueco"></i>Fábrica sin dato de emisiones (OpenStreetMap)</span></div>` : ""}
+    <h3>Provincia <small>(total por año${est.sector && esCT() ? ", " + GRUPOS[est.sector].toLowerCase() : ""})</small></h3>
     <span class="escala" style="background:linear-gradient(90deg, color-mix(in srgb, var(--co2-alto) 8%, var(--co2-bajo)), color-mix(in srgb, var(--co2-alto) 78%, var(--co2-bajo)))"></span>
     <div class="escala-txt"><span>0</span><span>${mt(max)} Mt</span></div>`;
 }
@@ -270,6 +335,21 @@ function pintarFicha() {
   const f = $("ficha"), x = est.sel && porId[est.sel];
   if (!x) { f.hidden = true; return; }
   f.hidden = false;
+  if (x.sd) {
+    f.innerHTML = `<div class="ficha-cab"><h2>${esc(x.n)}</h2><button class="ficha-cerrar" aria-label="Cerrar">×</button></div>
+      <div class="ficha-sec"><i class="hueco"></i>${esc(RUBROS[x.k])}</div>
+      <div class="kpis"><div><span class="kpi-v sd">Sin dato</span><span class="kpi-l">de emisiones: no figura en Climate TRACE</span></div></div>
+      <dl style="margin-top:12px">
+        <dt>Provincia</dt><dd>${esc(provNombre[x.p] || x.p)}</dd>
+        ${x.o ? `<dt>Operador</dt><dd>${esc(x.o)}</dd>` : ""}
+        ${x.pr ? `<dt>Producto</dt><dd>${esc(x.pr)}</dd>` : ""}
+        <dt>Ubicación</dt><dd><a href="https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=15/${x.lat}/${x.lon}" target="_blank" rel="noopener">${nf(x.lat, 3)}, ${nf(x.lon, 3)}</a></dd>
+        <dt>Fuente</dt><dd><a href="https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.osm[0]]}/${x.osm.slice(1)}" target="_blank" rel="noopener">OpenStreetMap</a></dd>
+      </dl>
+      <p class="pista">El rubro se deduce del nombre y las etiquetas del mapa, y puede fallar.</p>`;
+    f.querySelector(".ficha-cerrar").onclick = () => { est.sel = null; pintar(); };
+    return;
+  }
   const ow = due(x), tipo = x.t ? TIPOS[x.t] || x.t.replace(/\|/g, ", ") : "";
   const cap = x.cap && x.g === "energia" && x.cap[1] === "MW" ? `${nf(x.cap[0])} MW` : "";
   f.innerHTML = `<div class="ficha-cab"><h2>${esc(nombre(x))}</h2><button class="ficha-cerrar" aria-label="Cerrar">×</button></div>
@@ -297,11 +377,12 @@ function serieSvg(x) {
 }
 
 /* ---------- CSV ---------- */
-function armarCsv(lista) {
+function armarCsv(lista, listaO) {
   const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const cab = ["provincia", "nombre", "sector", "tipo", "propietarios", "latitud", "longitud", `t_co2e_${D.anio}`, ...D.aniosSerie.map((a) => `t_co2e_${a}`), "id_climate_trace"];
-  const filas = lista.map((x) => [provNombre[x.p] || x.p, nombre(x), sub(x), x.t || "", due(x).join("; "), x.lat, x.lon, x.e, ...x.serie, x.id].map(q).join(","));
-  const txt = "﻿" + [cab.join(","), ...filas].join("\r\n") + `\r\n"Fuente: Climate TRACE (climatetrace.org), CC BY 4.0. Estimaciones, no mediciones."`;
+  const cab = ["provincia", "nombre", "sector", "tipo", "propietarios", "latitud", "longitud", `t_co2e_${D.anio}`, ...D.aniosSerie.map((a) => `t_co2e_${a}`), "fuente", "id"];
+  const filas = lista.map((x) => [provNombre[x.p] || x.p, nombre(x), sub(x), x.t || "", due(x).join("; "), x.lat, x.lon, x.e, ...x.serie, "Climate TRACE", x.id].map(q).join(","))
+    .concat(listaO.map((x) => [provNombre[x.p] || x.p, x.n, RUBROS[x.k], x.pr || "", x.o || "", x.lat, x.lon, "sin dato", ...D.aniosSerie.map(() => ""), "OpenStreetMap", x.osm].map(q).join(",")));
+  const txt = "﻿" + [cab.join(","), ...filas].join("\r\n") + `\r\n"Fuentes: Climate TRACE (climatetrace.org), CC BY 4.0, estimaciones, no mediciones. Fábricas sin dato: © colaboradores de OpenStreetMap, ODbL."`;
   const a = $("csv");
   if (a.dataset.url) URL.revokeObjectURL(a.dataset.url);
   a.href = a.dataset.url = URL.createObjectURL(new Blob([txt], { type: "text/csv;charset=utf-8" }));
