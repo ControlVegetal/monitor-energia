@@ -3,9 +3,6 @@
 name: datos-osm
 on:
   workflow_dispatch:
-  push:
-    branches: [claude/project-thread-1iz5vj]
-    paths: [emisiones/herramientas/armar_osm.py, .github/workflows/datos-osm.yml]
 permissions:
   contents: write
 jobs:

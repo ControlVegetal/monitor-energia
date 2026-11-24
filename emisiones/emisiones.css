@@ -61,3 +61,4 @@ i.hueco { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(-
 .buscar input { width: 100%; font: inherit; font-size: .9rem; color: var(--texto); background: var(--fondo); border: 1px solid var(--borde); border-radius: 6px; padding: 7px 10px; }
 .kpis4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .kpis4 .kpi-v { font-size: 1.15rem; }
+@media (max-width: 480px) { .kpis4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
